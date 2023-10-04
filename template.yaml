@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Monitoring Amazon S3 Backups with CloudWatch Dashboards and Alarms
+
+Parameters:
+  MyBucket:
+    Description: Amazon S3 Bucket to store backup data. This name MUST be globally unique. Please see naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+    Type: String
+    Default: "S3-BUCKET-PLEASE-UPDATE-ME"
+  MyEmailAddress:
+    Description: SNS Subscription Email address to receive notifications of failed backups to S3
+    Type: String
+    Default: "EMAIL-PLEASE-UPDATE-ME"
+    
+
+Globals: 
+  Function:
+    Timeout: 5
+    MemorySize: 128
+    Runtime: python3.11
+
+Resources:
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${MyBucket}"
+    
+  CustomMetricsFunction:
+    Type: AWS::Serverless::Function    
+    Properties:
+      Handler: app.lambda_handler
+      CodeUri: monitor
+      Architectures:
+      - arm64
+      Events:
+        BackupEvent:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: BackupBucket
+            Events: s3:ObjectCreated:*
+      Environment:
+        Variables:
+          POWERTOOLS_SERVICE_NAME: BackupsMonitoring
+          POWERTOOLS_METRICS_NAMESPACE: BackupsMonitoring
+      Policies:
+        - S3FullAccessPolicy:
+            BucketName: !Sub "${MyBucket}"
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !Sub "${MyEmailAddress}"
+          Protocol: "email"
