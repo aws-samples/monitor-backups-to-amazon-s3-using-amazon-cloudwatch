@@ -5,4 +5,4 @@ tmp.py
 .aws-sam/
 .mypy_cache/
 .venv
-template.yml
+samconfig.toml
