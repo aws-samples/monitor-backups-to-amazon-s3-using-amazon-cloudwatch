@@ -1,8 +1,7 @@
 *.zip
 *.pyc
 packaged.yml
-tmp.py
+samconfig.toml
 .aws-sam/
 .mypy_cache/
 .venv
-samconfig.toml
