@@ -12,5 +12,5 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
     file_name = urllib.parse.unquote_plus(urllib.parse.unquote(event['Records'][0]['s3']['object']['key']))  #S3 event contains file name in URL encoding, needs to be decoded - https://github.com/aws-samples/amazon-textract-enhancer/issues/2
     print ("Backup file: " + file_name)
     
-    system_name = file_name.split("/")[0] #the prefix, i.e. the folder which is the metric you want you monitor
+    system_name = file_name.split("/")[0] #the prefix of the file, i.e. the folder, which represents the system and the metric you want you monitor backups for
     metrics.add_metric(name=system_name, unit=MetricUnit.Count, value=1) #each time a backup file is copied to S3, push a custom metric with the name of folder as the system name, with the value of 1.
