@@ -7,11 +7,11 @@ Parameters:
   MyBucket:
     Description: Amazon S3 Bucket to store backup data. This name MUST be globally unique. Please see naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
     Type: String
-    Default: "S3-BUCKET-PLEASE-UPDATE-ME"
+    MinLength: 1
   MyEmailAddress:
     Description: SNS Subscription Email address to receive notifications of failed backups to S3
     Type: String
-    Default: "EMAIL-PLEASE-UPDATE-ME"
+    MinLength: 1
     
 
 Globals: 
