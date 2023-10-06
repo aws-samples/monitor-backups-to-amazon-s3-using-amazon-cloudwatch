@@ -33,6 +33,8 @@ Resources:
       CodeUri: monitor
       Architectures:
       - arm64
+      Layers:
+      - arn:aws:lambda:af-south-1:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
       Events:
         BackupEvent:
           Type: S3

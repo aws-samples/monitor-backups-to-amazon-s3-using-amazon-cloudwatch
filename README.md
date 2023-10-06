@@ -81,14 +81,12 @@ The AWS Toolkit is an open source plug-in for popular IDEs that uses the SAM CLI
 * [VS Code](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/welcome.html)
 * [Visual Studio](https://docs.aws.amazon.com/toolkit-for-visual-studio/latest/user-guide/welcome.html)
 
-This application is built using the AWS Serverless Application Model (AWS SAM) for the python3.11 runtime, and options to bootstrap it with AWS Lambda Powertools for Python (Lambda Powertools) utilities for Logging, Tracing and Metrics. Powertools is a developer toolkit to implement Serverless best practices and increase developer velocity. Powertools provides three core utilities:
+This application is built using the AWS Serverless Application Model (AWS SAM) for the python3.11 runtime, and options to bootstrap it with [AWS Lambda Powertools for Python (Lambda Powertools)](https://docs.powertools.aws.dev/lambda/python/latest/) utilities for Logging, Tracing and Metrics. Powertools is a developer toolkit to implement Serverless best practices and increase developer velocity. Powertools provides three core utilities:
 
 
 * **[Tracing](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/tracer/)** - Decorators and utilities to trace Lambda function handlers, and both synchronous and asynchronous functions
 * **[Logging](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/logger/)** - Structured logging made easier, and decorator to enrich structured logging with key Lambda context details
 * **[Metrics](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/metrics/)** - Custom Metrics created asynchronously via CloudWatch Embedded Metric Format (EMF)
-
-Find the complete project's [documentation here](https://awslabs.github.io/aws-lambda-powertools-python).
 
 ### Installing AWS Lambda Powertools for Python
 
@@ -187,7 +185,7 @@ You now have a graph that visualises the backups to Amazon S3 on the dashboard y
 ### Create a CloudWatch alarm to alert on backup failures
 We want Amazon CloudWatch to alert us when backups are not copied regularly to the Amazon S3 Bucket. To do this, we will create an Amazon CloudWatch alarm to monitor the custom metrics we created earlier.
 
-We will be following this AWS documentation guide.
+We will be following this [AWS documentation guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ConsoleAlarms.html).
 
 1. In Amazon CloudWatch, on the left vertical navigation bar, choose Alarms, All alarms.
 2. On the top right, click Create alarm
@@ -217,26 +215,26 @@ Repeat the above for all metrics you want to create alarms for. You will now rec
 ## Related resources
 ### References
 
-- Install or update the latest version of the AWS CLI (AWS AWS Command Line Interface documentation)
-- Configure the AWS CLI (AWS AWS Command Line Interface documentation)
-- Installing the AWS SAM CLI (AWS Serverless Application Model documentation)
-- Creating a CloudWatch dashboard (Amazon CloudWatch documentation)
-- Add or remove a graph from a CloudWatch dashboard (Amazon CloudWatch documentation)
-- Create a CloudWatch alarm based on a static threshold (Amazon CloudWatch documentation)
+- [Install or update the latest version of the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) (AWS AWS Command Line Interface documentation)
+- [Configure the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) (AWS AWS Command Line Interface documentation)
+- [Installing the AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) (AWS Serverless Application Model documentation)
+- [Creating a CloudWatch dashboard](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/create_dashboard.html) (Amazon CloudWatch documentation)
+- [Add or remove a graph from a CloudWatch dashboard](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/add_remove_graph_dashboard.html) (Amazon CloudWatch documentation)
+- [Create a CloudWatch alarm based on a static threshold](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ConsoleAlarms.html) (Amazon CloudWatch documentation)
 
 ### Workshops
 
-Amazon CloudWatch workshop
+- [Amazon CloudWatch workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/a8e9c6a6-0ba9-48a7-a90d-378a440ab8ba/en-US/300-cloudwatch)
 
 ## Additional information
-There are multiple ways to backup data to AWS from on-premise systems to AWS storage services like Amazon S3:
+There are [multiple ways to backup data to AWS](https://aws.amazon.com/backup-restore/use-cases/) from on-premise systems to AWS storage services like Amazon S3:
 
-- Many third-party backup services have built-in cloud connectors that can be enabled to send data backups to AWS without disruption to your organization's daily operations.
-- AWS Storage Gateway is a hybrid storage service that enables your on-premises applications to seamlessly use AWS cloud storage.
-- AWS DataSync is a secure, online service that automates and accelerates moving data between on premises and AWS storage services
-- AWS Snow Family are purpose-built devices to cost effectively move petabytes of data, offline.
-- AWS Command Line Interface (AWS CLI) is an open source tool that enables you to interact with AWS services from multiple supported operating systems
-- Mountpoint for Amazon S3 is an open source file client that you can use to mount an S3 bucket on your compute instance and access it as a local file system.
+- Many [third-party backup services have built-in cloud connectors](https://aws.amazon.com/backup-recovery/partner-solutions/) that can be enabled to send data backups to AWS without disruption to your organization's daily operations.
+- [AWS Storage Gateway](https://aws.amazon.com/storagegateway/) is a hybrid storage service that enables your on-premises applications to seamlessly use AWS cloud storage.
+- [AWS DataSync](https://aws.amazon.com/datasync/) is a secure, online service that automates and accelerates moving data between on premises and AWS storage services
+- [AWS Snow Family](https://aws.amazon.com/snow/) are purpose-built devices to cost effectively move petabytes of data, offline.
+- [AWS Command Line Interface](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) (AWS CLI) is an open source tool that enables you to interact with AWS services from multiple supported operating systems
+- [Mountpoint for Amazon S3](https://aws.amazon.com/s3/features/mountpoint/) is an open source file client that you can use to mount an S3 bucket on your compute instance and access it as a local file system.
 
 ## Security
 
