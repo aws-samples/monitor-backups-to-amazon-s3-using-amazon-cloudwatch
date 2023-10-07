@@ -13,7 +13,6 @@ Parameters:
     Type: String
     MinLength: 1
     
-
 Globals: 
   Function:
     Timeout: 5
@@ -56,3 +55,35 @@ Resources:
       Subscription:
         - Endpoint: !Sub "${MyEmailAddress}"
           Protocol: "email"
+
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties: 
+      DashboardName: BackupsMonitoring
+      DashboardBody: |
+                  {
+                      "start": "-PT6H",
+                      "periodOverride": "inherit",
+                      "widgets": [
+                          {
+                            "type":"metric",
+                            "x":0,
+                            "y":0,
+                            "width":12,
+                            "height":10,
+                            "properties":{
+                                "metrics":[
+                                  [ { "expression": "FILL(SEARCH(' MetricName=\"Backups\"', 'Sum', 30), 0)", "id": "e1" } ]
+                                  ],
+                                "period":30,
+                                "stat":"Sum",
+                                "region":"af-south-1",
+                                "title":"Backups to S3",
+                                "liveData": false,
+                                "legend": {
+                                    "position": "right"
+                                  }
+                            }
+                          }
+                      ]
+                    }
