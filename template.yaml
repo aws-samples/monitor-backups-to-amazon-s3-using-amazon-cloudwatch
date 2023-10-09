@@ -18,6 +18,8 @@ Globals:
     Timeout: 5
     MemorySize: 128
     Runtime: python3.11
+    Architectures:
+      - arm64 #Lambda function will run on Arm-based AWS Graviton processors
 
 Resources:
   BackupBucket:
@@ -30,8 +32,6 @@ Resources:
     Properties:
       Handler: app.lambda_handler
       CodeUri: monitor
-      Architectures:
-      - arm64
       Layers:
       - arn:aws:lambda:af-south-1:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
       Events:
@@ -43,10 +43,10 @@ Resources:
             Events: s3:ObjectCreated:*
       Environment:
         Variables:
-          POWERTOOLS_SERVICE_NAME: BackupsMonitoring
+          #POWERTOOLS_SERVICE_NAME: BackupsMonitoring #TODO see if this fixes the CloudWatch Math Search
           POWERTOOLS_METRICS_NAMESPACE: BackupsMonitoring
       Policies:
-        - S3FullAccessPolicy:
+        - S3ReadPolicy:
             BucketName: !Sub "${MyBucket}"
 
   SNSTopic:
@@ -60,7 +60,7 @@ Resources:
     Type: AWS::CloudWatch::Dashboard
     Properties: 
       DashboardName: BackupsMonitoring
-      DashboardBody: |
+      DashboardBody: | #| (pipe) indicates that everything below is a string literal
                   {
                       "start": "-PT6H",
                       "periodOverride": "inherit",
