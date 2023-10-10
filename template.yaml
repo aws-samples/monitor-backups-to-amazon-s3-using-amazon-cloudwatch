@@ -43,7 +43,6 @@ Resources:
             Events: s3:ObjectCreated:*
       Environment:
         Variables:
-          #POWERTOOLS_SERVICE_NAME: BackupsMonitoring #TODO see if this fixes the CloudWatch Math Search
           POWERTOOLS_METRICS_NAMESPACE: BackupsMonitoring
       Policies:
         - S3ReadPolicy:
@@ -59,10 +58,9 @@ Resources:
   CloudWatchDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties: 
-      DashboardName: BackupsMonitoring
-      DashboardBody: | #| (pipe) indicates that everything below is a string literal
+      DashboardName: BackupsMonitoring #TODO: Paramatrise region and period
+      DashboardBody: | #The | (pipe) indicates that everything below is a string literal
                   {
-                      "start": "-PT6H",
                       "periodOverride": "inherit",
                       "widgets": [
                           {
@@ -73,9 +71,9 @@ Resources:
                             "height":10,
                             "properties":{
                                 "metrics":[
-                                  [ { "expression": "FILL(SEARCH(' MetricName=\"Backups\"', 'Sum', 30), 0)", "id": "e1" } ]
+                                  [ { "expression": "FILL(SEARCH(' {BackupsMonitoring, System} MetricName=\"Backups\" ', 'Sum'), 0)", "id": "e1" } ]
                                   ],
-                                "period":30,
+                                "period":3600,
                                 "stat":"Sum",
                                 "region":"af-south-1",
                                 "title":"Backups to S3",
