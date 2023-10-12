@@ -17,7 +17,7 @@ def create_metric_alarm(system):
     logger.info("Creating CloudWatch Alarm for: " + system)
     put_metric = client.put_metric_alarm(
                 AlarmName=system,
-                AlarmDescription=system + " Backups to S3",
+                AlarmDescription="Backups to S3: " + system
                 MetricName=MetricName,
                 Period=86400,
                 Statistic='Sum',

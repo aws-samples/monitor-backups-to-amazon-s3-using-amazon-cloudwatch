@@ -13,12 +13,12 @@ Parameters:
     Type: String
     MinLength: 1
   MetricName:
-    Description: The CloudWatch metric name that should be used. Can be any string
+    Description: The name of the CloudWatch metric that should be used. Can be any string
     Type: String
     MinLength: 1
     Default: "Backups"
   DimensionName:
-    Description: The CloudWatch dimension name that should be used for the above metric, based on what each folder represents. E.g each folder can represent a System, Location, Customer, that you doig backups for. Can be any string.
+    Description: The name of the CloudWatch dimension that should be used for the above metric, based on what each folder represents. E.g each folder can represent a System, Location, Customer, that you doig backups for. Can be any string.
     Type: String
     MinLength: 1
     Default: "System"
@@ -43,8 +43,8 @@ Globals:
           #POWERTOOLS_SERVICE_NAME: Backups #TODO see if this fixes the CloudWatch Math Search, but misses Logging info
           LOG_LEVEL: INFO
           SNSTopic: !Ref EmailNotificationsSNSTopic
-          MetricName: MetricName
-          DimensionName: DimensionName  
+          MetricName: !Ref MetricName
+          DimensionName: !Ref DimensionName  
 
 Resources:
   BackupBucket:
