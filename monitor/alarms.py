@@ -25,7 +25,7 @@ def create_metric_alarm(system):
                 Dimensions=[
                     {
                         'Name': DimensionName,
-                        'Value': system
+                        'Value': dimension_value
                     },
                 ],
                 EvaluationPeriods=1,
@@ -41,8 +41,8 @@ def lambda_handler(event, context):
     logger.info("Start creating CloudWatch alarms for each custom metric")
 
     list_metrics = client.list_metrics(
-        Namespace='BackupsMonitoring',
-        MetricName='Backups'
+        Namespace=CloudWatchMetricsNameSpace,
+        MetricName=MetricName
     )
 
     #iterate over list_metrics and find dimensions
@@ -50,9 +50,9 @@ def lambda_handler(event, context):
         #print(metric['Dimensions'])
         for dimensions in metric['Dimensions']:
             #dimensions["Name"])
-            if dimensions["Name"] == "System":
-                system = (dimensions["Value"])
+            if dimensions["Name"] == DimensionName:
+                dimension_value = (dimensions["Value"])
                 
-                create_metric_alarm(system)
+                create_metric_alarm(dimension_value)
 
         
