@@ -25,7 +25,7 @@ Parameters:
   BackupFrequencyPeriod:
     Description: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? MUST be represented in seconds. The default is 86400 seconds = 1 day
     Type: Number
-    MinLength: 1
+    #MinLength: 1
     ConstraintDescription: "Must be in seconds"
     Default: 86400
     
