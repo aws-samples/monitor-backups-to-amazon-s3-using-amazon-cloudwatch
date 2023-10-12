@@ -21,7 +21,7 @@ def lambda_handler(event, context):
     
     dimension_value = file_name.split("/")[1] #the prefix of the file, i.e. the folder, which represents the system and the metric you want you monitor backups for
     #metrics.add_metric(name=MetricName, unit=MetricUnit.Count, value=1) #each time a backup file is copied to S3, push a custom metric with value of 1
-    #metrics.add_dimension(name=DimensionName, value=dimension_name) #dimension as a key/value pair. Key: System, and Value: name of folder as the system name
+    #metrics.add_dimension(name=DimensionName, value=dimension_value) #dimension as a key/value pair. Key: System, and Value: name of folder as the system name
     with single_metric(name=MetricName, unit=MetricUnit.Count, value=1) as metric:
         metric.add_dimension(name=DimensionName, value=dimension_value)
     logger.info("Pushed metric and dimension for: " + dimension_value)

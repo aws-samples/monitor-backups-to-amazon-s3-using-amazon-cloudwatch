@@ -13,11 +13,11 @@ logger = Logger()
 client =  boto3.client('cloudwatch')
 
 
-def create_metric_alarm(system):
-    logger.info("Creating CloudWatch Alarm for: " + system)
+def create_metric_alarm(dimension_value):
+    logger.info("Creating CloudWatch Alarm for: " + dimension_value)
     put_metric = client.put_metric_alarm(
-                AlarmName=system,
-                AlarmDescription="Backups to S3: " + system
+                AlarmName=dimension_value,
+                AlarmDescription="Backups to S3: " + dimension_value,
                 MetricName=MetricName,
                 Period=86400,
                 Statistic='Sum',
