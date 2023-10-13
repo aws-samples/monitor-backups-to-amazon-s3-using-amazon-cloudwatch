@@ -18,7 +18,7 @@ def create_metric_alarm(dimension_value):
                 AlarmName=dimension_value,
                 AlarmDescription="Backups to S3: " + dimension_value,
                 MetricName=MetricName,
-                Period=BackupFrequencyPeriod,
+                Period=int(BackupFrequencyPeriod),
                 Statistic='Sum',
                 Namespace=CloudWatchMetricsNameSpace,
                 Dimensions=[
@@ -37,7 +37,7 @@ def create_metric_alarm(dimension_value):
     logger.debug(put_metric) 
 
 def lambda_handler(event, context):
-    logger.info("List availablee metrics and create CloudWatch alarms for each custom metric") 
+    logger.info("List available metrics and create CloudWatch alarms for each custom metric") 
 
     #TODO: check which alarms already exist before creating.
     #get the metrics that already exist

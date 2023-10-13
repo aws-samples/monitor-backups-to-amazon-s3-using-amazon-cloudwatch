@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   Monitoring Amazon S3 Backups with CloudWatch Dashboards and Alarms
+  https://github.com/aws-samples/monitor-backups-to-amazon-s3-using-amazon-cloudwatch
 
 Parameters:
   MyBucket:
@@ -13,12 +14,12 @@ Parameters:
     Type: String
     MinLength: 5
   MetricName:
-    Description: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups"
+    Description: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups".
     Type: String
     MinLength: 1
     Default: "Backups"
   DimensionName:
-    Description: The name of the CloudWatch dimension that should be used for the above metric, based on what each S3 folder represents. E.g each folder can represent a System, Location or Customer, that you doing backups for. Can be any string. The default is "System"
+    Description: The name of the CloudWatch dimension that should be used for the above metric, based on what each S3 folder represents. E.g each folder can represent a System, Location or Customer, that you doing backups for. Can be any string. The default is "System".
     Type: String
     MinLength: 1
     Default: "System"
@@ -36,7 +37,7 @@ Globals:
     Runtime: python3.11
     CodeUri: monitor
     Architectures:
-      - arm64 #Lambda function will run on Arm-based AWS Graviton processors. The Powertools Lamba layer will also be Arm based
+      - arm64 #Lambda functions will run on Arm-based AWS Graviton processors. The Powertools Lambda layer will also be Arm-based
     Environment:
         Variables:
           POWERTOOLS_METRICS_NAMESPACE: BackupsMonitoring
@@ -57,6 +58,7 @@ Resources:
   CustomMetricsFunction:
     Type: AWS::Serverless::Function    
     Properties:
+      Description: This Lambda functions gets invoked each time a backup is copied to S3. It pushes a metric and dimension to CloudWatch for each backup
       Handler: metrics.lambda_handler
       Layers:
       - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
@@ -74,6 +76,7 @@ Resources:
   AlarmsFunction:
     Type: AWS::Serverless::Function    
     Properties:
+      Description: This Lambda functions runs on a EventBridge schedule. It checks the metrics that exist (created by the CustomMetrics function), and creates CloudWatch Alarms for each metric.
       Handler: alarms.lambda_handler
       Layers:
       - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
@@ -89,7 +92,7 @@ Resources:
         Schedule:
           Type: Schedule
           Properties:
-            Schedule: cron(0 * * * ? *) #run every hour, on the hour (at the 0th minute)
+            Schedule: cron(0 5 * * ? *) #run once a day at 5am (in GMT), every day, on the hour (at the 0th minute)
 
   EmailNotificationsSNSTopic:
     Type: AWS::SNS::Topic
@@ -101,7 +104,7 @@ Resources:
   CloudWatchDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties: 
-      DashboardName: BackupsMonitoring #TODO: Paramatrise  period 
+      DashboardName: BackupsMonitoring
       DashboardBody: !Sub "  
                   {
                       \"periodOverride\": \"inherit\",
