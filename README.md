@@ -1,6 +1,6 @@
 # Build Amazon CloudWatch dashboards and alarms to monitor backups to Amazon S3
 
-Amazon S3 offers industry-leading scalability and availability, and customers often use Amazon S3 as a backup target, for data from on-premise systems, including Linux or Windows servers. Usually, the AWS CLI is used in a script to copy these backups to Amazon S3. Customers may struggle to ensure that these backups are successful, and if they fail, to notify teams to resolve the issue.  Amazon S3 Event Notifications provides a mechanism for initiating events when backups land in an S3 bucket. 
+Amazon S3 offers industry-leading scalability and availability, and customers often use Amazon S3 as a backup target, for data from on-premise systems, including Linux or Windows servers. Usually, the AWS CLI is used in a script to copy these backups to Amazon S3. Customers may struggle to ensure that these backups are successful, and if they fail, to notify teams to resolve the issue.  [Amazon S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) provides a mechanism for initiating events when backups land in an S3 bucket. 
 
 ![Screenshot](./CloudWatchDashboad-Screenshot.png)
 
@@ -16,26 +16,55 @@ This pattern uses AWS serverless services to implement an event-driven approach 
 
 ## Assumptions 
 
-You can choose how to structure your backup data in the Amazon S3 bucket, based on your current setup. The default behaviour of the Lambda function assumes that in the root of the bucket, there will be folders that hold backup data for different types of applications, locations, customers, or any other structure you want to monitor. E.g. lets say you have three different types of applications that you are backing up data for: a web application, a CRM application, and a database. In this case, each application will be backed up to three different folders in the same bucket, namely:
+You can choose how to structure your backup data in the Amazon S3 bucket, based on your current setup. The default behaviour of the Lambda function assumes that in the root of the bucket, there will be folders that hold backup data for different types of systems, applications, locations, customers, or any other structure you want to monitor. E.g. lets say you have three different types of applications that you are backing up data for: a web application, a CRM application, and a database. In this case, each application will be backed up to three different folders in the same bucket, namely:
 
-- web
-- crm
-- db
+    - web
+    - crm
+    - db
 
 Or they could be for systems in different locations, and then the different folders could be:
 
-- johannesburg
-- capetown
+    - johannesburg
+    - capetown
 
-Assuming these systems run on on-premise servers, or even on Amazon EC2 instances, once you have created the backups, some script on each of those servers could use (probably scheduled from cron to run daily or at some other regular internal) the following AWS CLI S3 command to copy the backup files to the bucket:
+Assuming these systems run on on-premise servers, or even on Amazon EC2 instances, once you have created the backups, some script on each of those servers could use (probably scheduled from cron to run daily or at some other regular internal) the [AWS CLI S3 copy command](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/cp.html) to copy the backup files to the bucket: (Note: you must edit the placeholders )
 
-`aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/backup-2023-09-14.tar.gz`
+`aws s3 cp {source backup files} s3://{MyBucket}/{system}/`
 
-`aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/backup-2023-09-14.tar.gz`
+An example could be:
 
-This line below in the [AWS Lambda function](https://github.com/aws-samples/monitor-backups-to-amazon-s3-using-amazon-cloudwatch/blob/main/monitor/app.py) determines the folder name, which is the metric we will measure in CloudWatch. This can be customised based on the file or directory structure of your backup date.
+    `aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/`
+
+    `aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/`
+
+This line below in the [AWS Lambda function](https://github.com/aws-samples/monitor-backups-to-amazon-s3-using-amazon-cloudwatch/blob/main/monitor/app.py) determines the folder name, which is the metric we will monitor in CloudWatch. 
 
 `metric_name = filename.split("/")[0]`
+
+That assumes that the root of the S3 bucket contains the folders with the backups files
+```
+S3Bucket
+   ├── crm
+   ├── db
+   └── web
+```
+
+This can be customised based on the file or directory structure of your backup date. So if your backup data folders for each system are not in the root of the S3 bucket, like this:
+```
+S3Bucket
+└── Backups
+    ├── crm
+    ├── db
+    └── web
+```
+then changing the line below would make sure that the Backups folder is ignored, and metrics are created for the system folders:
+
+`metric_name = filename.split("/")[1]`
+
+
+## Limitations
+
+- The Amazon S3 bucket to be used must be a new bucket, and cannot already exist. If you want to use this solution with an already existing bucket, you may customise the template.yaml file to remove all references to the S3 bucket, and manually create an S3 Event Notification to the **CustomMetrics** Lambda function.
 
 ## Architecture
 
@@ -54,19 +83,19 @@ This line below in the [AWS Lambda function](https://github.com/aws-samples/moni
 
 The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. It uses Docker to run your functions in an Amazon Linux environment that matches Lambda. It can also emulate your application's build environment and API.
 
-To use the SAM CLI, you need the following tools.
+To use the SAM CLI, you need the following tools:
 
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 * [Python 3 installed](https://www.python.org/downloads/)
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
-- monitor - Code for the application's Lambda function.
+- monitor - this folder constain the pythonn code for the application's Lambda functions.
 - events - Invocation events that you can use to invoke the function.
 - tests - Unit tests for the application code.
 - template.yaml - A template that defines the application's AWS resources.
 
-The application uses several AWS resources, including an Amazon S3 bucket and AWS Lambda function. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
+The application uses several AWS resources, including an Amazon S3 bucket, AWS Lambda functions and Amazon CloudWatch dashboards, metrics and alarms. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
 
 If you prefer to use an integrated development environment (IDE) to build and test your application, you can use the AWS Toolkit.
 The AWS Toolkit is an open source plug-in for popular IDEs that uses the SAM CLI to build and deploy serverless applications on AWS. The AWS Toolkit also adds a simplified step-through debugging experience for Lambda function code. See the following links to get started.
@@ -126,8 +155,6 @@ and change to that directory:
 `cd monitor-backups-to-amazon-s3-using-amazon-cloudwatch/`
 
 ### Deploy to AWS using AWS SAM
-Now that the application is configured with our Amazon S3 bucket name and email address for Amazon SNS notifications, we can proceed to deploy the application using AWS SAM.
-
 To build and deploy this application for the first time, run the following in your shell:
 ```
 sam build
@@ -136,10 +163,13 @@ sam deploy --guided
 
 The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
 
-- Stack Name: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
-- AWS Region: The AWS region you want to deploy your app to.
-- Parameter MyBucket: Please specify a name of a new S3 bucket you want created. Please note the [S3 bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html). 
+- **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
+- **AWS Region**: The AWS region you want to deploy your app to.
+- Parameter **MyBucket**: Please specify a name of a new S3 bucket you want created. Must not be an existing bucket, and the name must be globally unique. Please note the [S3 bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html). 
 - Parameter MyEmailAddress: Please specify an email address in order to receive email notifications of failed backups to Amazon S3.
+- Parameter **MetricName** [Backups]: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups".
+- Parameter **DimensionName** [System]: The name of the CloudWatch dimension that should be used for the above metric, based on what each S3 folder represents. E.g each folder can represent a System, Location, or Customer, that you doing backups for. Can be any string. The default is "System".
+- Parameter **BackupFrequencyPeriod** [86400]: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? The value must be represented in seconds. The default is 86400 seconds = 1 day, i.e. you expect that files are backed up to S3 daily.
 - Confirm changes before deploy: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
 - Allow SAM CLI IAM role creation: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. 
 - Save arguments to samconfig.toml: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run sam deploy without parameters to deploy changes to your application.
@@ -153,65 +183,117 @@ This will result in the creation of the following AWS resources:
 - Amazon S3 bucket
 - Amazon S3 event notification trigger to a Lambda function
 - AWS Lambda function that receives an event each time an object is created in Amazon S3, and based on the filename, creates a custom metric in Amazon CloudWatch that tracks the count of uploads
+- Amazon CloudWatch dashboard, with a graph for each metric, and a corresponding alarm
 - Amazon SNS Topic and subscription with the specified email address, that will be later used by an Amazon CloudWatch alarm to send notifications when the metric of uploads is breached, which is the result of no uploads to Amazon S3.
 
 ## Backup and upload data to Amazon S3
-Now that the Amazon S3 bucket and Lambda function have been created, we can now upload our backup data to the bucket. This will then trigger the Lambda function, which will create custom metrics in Amazon CloudWatch, which need to configure the Amazon CloudWatch dashboards and alerts. 
+Now that the Amazon S3 bucket and Lambda function have been created, we can now upload our backup data to the bucket. This will then trigger the **CustomMetrics** Lambda function, which will create custom metrics in Amazon CloudWatch.
 
-You could use the following AWS CLI S3 command to copy backup files to the bucket (use your own bucket name):
+You could use the following [AWS CLI S3 copy command](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/cp.html) to copy the backup files to the bucket: (Note: you must edit the placeholders )
 
-`aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/backup-2023-09-14.tar.gz`
+`aws s3 cp {source backup files} s3://{MyBucket}/{system}/`
 
-`aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/backup-2023-09-14.tar.gz`
+An example could be:
+
+`aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/`
+
+`aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/`
 
 Once these objects land in Amazon S3, the AWS Lambda function will publish a custom metric in Amazon CloudWatch for each folder that has data uploaded to it.
 
-## Configure CloudWatch dashboards and alerts
-### Create a CloudWatch dashboard
-To create a CloudWatch dashboard in the same region you have been using throughout this pattern, please follow [this AWS documentation guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/create_dashboard.html). You can choose any name for the dashboard.
-### Add a CloudWatch widget to visualise the custom metric
-When we uploaded data to the Amazon S3 bucket, the AWS Lambda function created custom metrics for each folder, under a namespace called BackupsMonitoring, which was based on different types of applications we are storing backup data for. We can now add it to the dashboard to visualise it using widgets and graphs - we will be following [this AWS documentation guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/add_remove_graph_dashboard.html).
+## Verify CloudWatch dashboards and alerts
 
-1. In the same dashboard that was created above, Choose the + symbol on the top right.
-2. Choose the Line widget, using Metrics, then choose Next.
-3. Under Custom namespaces, choose BackupsMonitoring, then select service
-4. Here you will find many custom metrics, based on how many backup files you uploaded in the previous epic. Assuming you uploaded different backups each to the web, crm and db folders, you will find each one listed here. Select the tick box for the ones you want to add to the graph.
-5. Change the Statistics to Sum, and Period to 1 day. This will now sum up each metric count, based on on our backup schedule, where we expect backups to upload to S3 once a day.
-6. Optionally, after adding all the metrics, select Add math, under All functions, select FILL. This will add a new Label, with Details of FILL(METRICS(), 0), which will connect the [different data points](https://repost.aws/questions/QUi03BGoTzQlyAguOcQrp7Ag/how-to-connect-data-points-in-cloudwatch-dashboard).
-7. Click Create Widget.
-8. Click Save on the dashboard.
+### Verify CloudWatch dashboard
+The SAM template deployed an Amazon CloudWatch dashboard named `BackupsMonitoring`. You can navigate to [CloudWatch in the management console](https://console.aws.amazon.com/cloudwatch/home#dashboards/), and [selecting the BackupsMonitoring dashboard](https://console.aws.amazon.com/cloudwatch/home#dashboards/dashboard/BackupsMonitoring).
 
-You now have a graph that visualises the backups to Amazon S3 on the dashboard you created.
+You will find a graph with data points for your backup data. Assuming you uploaded backup data for `web` and `crm`, you will find these on the legend of the graph. You may customise the timeline on the top right.
 
-### Create a CloudWatch alarm to alert on backup failures
-We want Amazon CloudWatch to alert us when backups are not copied regularly to the Amazon S3 Bucket. To do this, we will create an Amazon CloudWatch alarm to monitor the custom metrics we created earlier.
+You can follow [this AWS documentation guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/add_remove_graph_dashboard.html) in order to add more graphs
 
-We will be following this [AWS documentation guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ConsoleAlarms.html).
 
-1. In Amazon CloudWatch, on the left vertical navigation bar, choose Alarms, All alarms.
-2. On the top right, click Create alarm
-3. Choose Select Metric.
-4. Choose BackupsMonitoring, then service.
-5. Assuming you already uploaded some backup data to folders name crm or web, you will see these listed here as metrics. Select the tick box next to the metric you want, then click Select Metric. You may only select a single metric at a time, so if there were multiple metrics you wanted to create an alarm for, this process will be repeated per metric.
-6. Change Statistic to Sum, and Period to 1 day, or any other period based on your backup schedule.
-7. Change Threshold type to Static.
-8. Change the alarm condition to Lower, and threshold value to 1.
-9. Under Additional configuration, change Missing data treatment to Treat missing data as bad (breaching threshold).
-10. Select Next.
-11. Select an existing SNS topic, and choose the one that starts with backupmonitoring-s3tocloudwatch-custommetrics-SNSTopic-. Your email address will appear.
-12. Select Next.
-13. Choose an alarm name of your choice, then Select Next.
-14. In the Preview screen, verify the following:
-- service: BackupsMonitoring
-- Statistic: Sum
-- Period: 1 day
-- Threshold type: Static
-- Whenever: Lower (<)
-- than: 1
-- Missing data treatment: Treat missing data as bad (breaching threshold)
-15. Click Create alarm.
+### Verify CloudWatch alarms to alert on backup failures
+We want Amazon CloudWatch to alert us when backups are not copied regularly to the Amazon S3 Bucket. To do this, we can use the 2nd AWS Lambda function named `AlarmsFunction` that will create alarms for each metric created above. You can wait for the `AlarmsFunction` to run on a schedule once a day, or you can manually invoke it, with the correct stack name you chose when running the `sam deploy --guided` command earlier: 
 
-Repeat the above for all metrics you want to create alarms for. You will now receive an email from Amazon SNS whenever backup data from this system is not copied to Amazon S3 at least once a day. 
+`sam remote invoke --stack-name  monitor-backups-to-amazon-s3-using-amazon-cloudwatch AlarmsFunction`
+
+and the output will indicate which alarms have been created:
+
+```
+Invoking Lambda Function AlarmsFunction                                                                                                                                                                       
+{"level":"INFO","location":"create_metric_alarm:16","message":"Creating CloudWatch Alarm for: web","timestamp":"2023-10-13 15:43:16,834+0000","service":"service_undefined","xray_trace_id":"1-65296593-7d1f7a55420145f345ca779e"}
+{"level":"INFO","location":"create_metric_alarm:16","message":"Creating CloudWatch Alarm for: crm",
+REPORT RequestId: e8ad25b2-9a2c-4c1d-b6fa-5a37b6e61fb1  Duration: 4104.72 ms    Billed Duration: 4105 ms        Memory Size: 128 MB     Max Memory Used: 75 MB  Init Duration: 372.69 ms
+```
+
+You can follow this [AWS documentation guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ConsoleAlarms.html) to create additional CloudWatch alarms.
+
+You will now receive an email from Amazon SNS whenever backup data from this system is not copied to Amazon S3 at least once a day. 
+
+## Troubleshooting
+If metrics have not been created for each of the backup folders, you can view the AWS Lambda logs in a number of ways:
+- using the AWS SAM CLI, with the correct stack name you chose when running the `sam deploy --guided` command earlier, this command will show the AWS Lambda logs:
+
+    `sam logs --stack-name monitor-backups-to-amazon-s3-using-amazon-cloudwatch`
+- using the [Lambda console](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html#monitoring-cloudwatchlogs-console) 
+
+The logs will indicate that the **CustomMetrics** function created a CloudWatch metric and dimension for a file uploaded to `s3://myuniquebucket/web/backup-2023-09-14.tar.gz`
+
+```
+2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.719000 INIT_START Runtime Version: python:3.11.v14     Runtime Version ARN: arn:aws:lambda:af-south-1::runtime:f718e534828938076c2b13386127506049c7b53188aace2667ca4ab835d5de40
+2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.882000 START RequestId: cf95e553-6351-4798-98a3-e848d19629f2 Version: $LATEST
+2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.883000 {
+  "level": "INFO",
+  "location": "lambda_handler:17",
+  "message": "Start processing S3 Event",
+  "timestamp": "2023-10-13 14:04:15,883+0000",
+  "service": "service_undefined",
+  "xray_trace_id": "1-65294e5f-57db9abf2318e4893da4107e"
+}
+2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.883000 {
+  "level": "INFO",
+  "location": "lambda_handler:20",
+  "message": "Backup file: web/backup-2023-09-14.tar.gz",
+  "timestamp": "2023-10-13 14:04:15,883+0000",
+  "service": "service_undefined",
+  "xray_trace_id": "1-65294e5f-57db9abf2318e4893da4107e"
+}
+2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.883000 {
+  "level": "INFO",
+  "location": "lambda_handler:27",
+  "message": "Pushed metric and dimension for: web",
+  "timestamp": "2023-10-13 14:04:15,883+0000",
+  "service": "service_undefined",
+  "xray_trace_id": "1-65294e5f-57db9abf2318e4893da4107e"
+}
+2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.883000 {
+  "_aws": {
+    "Timestamp": 1697205855883,
+    "CloudWatchMetrics": [
+      {
+        "Namespace": "BackupsMonitoring",
+        "Dimensions": [
+          [
+            "System"
+          ]
+        ],
+        "Metrics": [
+          {
+            "Name": "Backups",
+            "Unit": "Count"
+          }
+        ]
+      }
+    ]
+  },
+  "System": "web",
+  "Backups": [
+    1.0
+  ]
+}
+2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.899000 END RequestId: cf95e553-6351-4798-98a3-e848d19629f2
+2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.899000 REPORT RequestId: cf95e553-6351-4798-98a3-e848d19629f2  Duration: 16.83 ms      Billed Duration: 17 ms   Memory Size: 128 MB     Max Memory Used: 44 MB  Init Duration: 162.32 ms
+```
+
 
 ## Related resources
 ### References
