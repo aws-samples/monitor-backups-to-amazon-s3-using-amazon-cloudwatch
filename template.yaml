@@ -13,17 +13,17 @@ Parameters:
     Type: String
     MinLength: 5
   MetricName:
-    Description: The name of the CloudWatch metric that should be used. Can be any string
+    Description: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups"
     Type: String
     MinLength: 1
     Default: "Backups"
   DimensionName:
-    Description: The name of the CloudWatch dimension that should be used for the above metric, based on what each folder represents. E.g each folder can represent a System, Location or Customer, that you doing backups for. Can be any string.
+    Description: The name of the CloudWatch dimension that should be used for the above metric, based on what each S3 folder represents. E.g each folder can represent a System, Location or Customer, that you doing backups for. Can be any string. The default is "System"
     Type: String
     MinLength: 1
     Default: "System"
   BackupFrequencyPeriod:
-    Description: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? MUST be represented in seconds. The default is 86400 seconds = 1 day
+    Description: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? The value must be represented in seconds. The default is 86400 seconds = 1 day, i.e. you expect that files are backed up to S3 daily.
     Type: Number
     MinValue: 1
     ConstraintDescription: "Must be in seconds"
@@ -40,11 +40,12 @@ Globals:
     Environment:
         Variables:
           POWERTOOLS_METRICS_NAMESPACE: BackupsMonitoring
-          POWERTOOLS_SERVICE_NAME: S3Backups #TODO see if this fixes the CloudWatch Math Search, but misses Logging info
+          #POWERTOOLS_SERVICE_NAME: S3Backups #TODO see if this fixes the CloudWatch Math Search, but misses Logging info
           LOG_LEVEL: INFO
           SNSTopic: !Ref EmailNotificationsSNSTopic
           MetricName: !Ref MetricName
-          DimensionName: !Ref DimensionName  
+          DimensionName: !Ref DimensionName
+          BackupFrequencyPeriod: !Ref BackupFrequencyPeriod  
 
 Resources:
   BackupBucket:

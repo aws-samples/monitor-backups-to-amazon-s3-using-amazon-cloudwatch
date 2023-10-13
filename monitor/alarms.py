@@ -2,11 +2,11 @@ from aws_lambda_powertools import Logger
 import boto3
 import os
 
-SNSTopic = os.environ['SNSTopic']
-CloudWatchMetricsNameSpace = os.environ['POWERTOOLS_METRICS_NAMESPACE']
-
 MetricName = os.environ['MetricName']
+BackupFrequencyPeriod = os.environ['BackupFrequencyPeriod']
+CloudWatchMetricsNameSpace = os.environ['POWERTOOLS_METRICS_NAMESPACE']
 DimensionName = os.environ['DimensionName']
+SNSTopic = os.environ['SNSTopic']
 
 logger = Logger()
 client =  boto3.client('cloudwatch')
@@ -18,7 +18,7 @@ def create_metric_alarm(dimension_value):
                 AlarmName=dimension_value,
                 AlarmDescription="Backups to S3: " + dimension_value,
                 MetricName=MetricName,
-                Period=86400,
+                Period=BackupFrequencyPeriod,
                 Statistic='Sum',
                 Namespace=CloudWatchMetricsNameSpace,
                 Dimensions=[
@@ -37,8 +37,10 @@ def create_metric_alarm(dimension_value):
     logger.debug(put_metric) 
 
 def lambda_handler(event, context):
-    logger.info("Start creating CloudWatch alarms for each custom metric")
+    logger.info("List availablee metrics and create CloudWatch alarms for each custom metric") 
 
+    #TODO: check which alarms already exist before creating.
+    #get the metrics that already exist
     list_metrics = client.list_metrics(
         Namespace=CloudWatchMetricsNameSpace,
         MetricName=MetricName
@@ -46,12 +48,10 @@ def lambda_handler(event, context):
 
     #iterate over list_metrics and find dimensions
     for metric in list_metrics['Metrics']:
-        #print(metric['Dimensions'])
         for dimensions in metric['Dimensions']:
-            #dimensions["Name"])
             if dimensions["Name"] == DimensionName:
                 dimension_value = (dimensions["Value"])
-                
+                #for each metric, create an alarm
                 create_metric_alarm(dimension_value)
 
         
