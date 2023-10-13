@@ -1,6 +1,5 @@
 from aws_lambda_powertools import Logger
 import boto3
-import json
 import os
 
 SNSTopic = os.environ['SNSTopic']

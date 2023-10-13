@@ -2,6 +2,8 @@
 
 Amazon S3 offers industry-leading scalability and availability, and customers often use Amazon S3 as a backup target, for data from on-premise systems, including Linux or Windows servers. Usually, the AWS CLI is used in a script to copy these backups to Amazon S3. Customers may struggle to ensure that these backups are successful, and if they fail, to notify teams to resolve the issue.  Amazon S3 Event Notifications provides a mechanism for initiating events when backups land in an S3 bucket. 
 
+![Screenshot](./CloudWatchDashboad-Screenshot.png)
+
 In this pattern, we will create an Amazon S3 trigger to invoke a Lambda function that will publish a custom metric to Amazon CloudWatch, based on the backup data in S3. CloudWatch dashboards will allow you to monitor all backups in a single graph, and CloudWatch alarms will send notifications when backups fail, to help customers quickly resolve failing backups. 
 
 This pattern uses AWS serverless services to implement an event-driven approach to monitor backup files in Amazon S3.
@@ -82,7 +84,6 @@ The AWS Toolkit is an open source plug-in for popular IDEs that uses the SAM CLI
 * [Visual Studio](https://docs.aws.amazon.com/toolkit-for-visual-studio/latest/user-guide/welcome.html)
 
 This application is built using the AWS Serverless Application Model (AWS SAM) for the python3.11 runtime, and options to bootstrap it with [AWS Lambda Powertools for Python (Lambda Powertools)](https://docs.powertools.aws.dev/lambda/python/latest/) utilities for Logging, Tracing and Metrics. Powertools is a developer toolkit to implement Serverless best practices and increase developer velocity. Powertools provides three core utilities:
-
 
 * **[Tracing](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/tracer/)** - Decorators and utilities to trace Lambda function handlers, and both synchronous and asynchronous functions
 * **[Logging](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/logger/)** - Structured logging made easier, and decorator to enrich structured logging with key Lambda context details

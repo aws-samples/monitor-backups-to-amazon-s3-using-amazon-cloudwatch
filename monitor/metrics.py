@@ -1,9 +1,9 @@
 from aws_lambda_powertools import Metrics
 from aws_lambda_powertools.metrics import MetricUnit
-from aws_lambda_powertools import single_metric
 from aws_lambda_powertools import Logger
 import urllib.parse
 import os
+from aws_lambda_powertools import single_metric
 
 logger = Logger()
 CloudWatchMetricsNameSpace = os.environ['POWERTOOLS_METRICS_NAMESPACE'] #the CloudWatch namespace: logical container to group all metrics for backups
@@ -20,9 +20,9 @@ def lambda_handler(event, context):
     logger.info("Backup file: " + file_name)
     
     dimension_value = file_name.split("/")[1] #the prefix of the file, i.e. the folder, which represents the system and the metric you want you monitor backups for
-    #metrics.add_metric(name=MetricName, unit=MetricUnit.Count, value=1) #each time a backup file is copied to S3, push a custom metric with value of 1
-    #metrics.add_dimension(name=DimensionName, value=dimension_value) #dimension as a key/value pair. Key: System, and Value: name of folder as the system name
-    with single_metric(name=MetricName, unit=MetricUnit.Count, value=1) as metric:
-        metric.add_dimension(name=DimensionName, value=dimension_value)
+    metrics.add_metric(name=MetricName, unit=MetricUnit.Count, value=1) #each time a backup file is copied to S3, push a custom metric with value of 1
+    metrics.add_dimension(name=DimensionName, value=dimension_value) #dimension as a key/value pair. Key: System, and Value: name of folder as the system name
+    #with single_metric(name=MetricName, unit=MetricUnit.Count, value=1) as metric:
+    #    metric.add_dimension(name=DimensionName, value=dimension_value)
     logger.info("Pushed metric and dimension for: " + dimension_value)
 

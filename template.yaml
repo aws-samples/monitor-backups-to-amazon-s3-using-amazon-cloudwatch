@@ -5,27 +5,27 @@ Description: >
 
 Parameters:
   MyBucket:
-    Description: Amazon S3 Bucket to store backup data. MUST be globally unique. Please see S3 Bucket naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+    Description: Amazon S3 Bucket to store backup data. Must not be an existing bucket, and the name must be globally unique. Please see S3 Bucket naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
     Type: String
     MinLength: 1
   MyEmailAddress:
-    Description: SNS Subscription Email address to receive notifications from CloudWatch alarms of failed backups to S3. MUST be a valid email address.
+    Description: SNS Subscription Email address to receive notifications from CloudWatch alarms of failed backups to S3. Must be a valid email address.
     Type: String
-    MinLength: 1
+    MinLength: 5
   MetricName:
     Description: The name of the CloudWatch metric that should be used. Can be any string
     Type: String
     MinLength: 1
     Default: "Backups"
   DimensionName:
-    Description: The name of the CloudWatch dimension that should be used for the above metric, based on what each folder represents. E.g each folder can represent a System, Location, Customer, that you doig backups for. Can be any string.
+    Description: The name of the CloudWatch dimension that should be used for the above metric, based on what each folder represents. E.g each folder can represent a System, Location or Customer, that you doing backups for. Can be any string.
     Type: String
     MinLength: 1
     Default: "System"
   BackupFrequencyPeriod:
     Description: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? MUST be represented in seconds. The default is 86400 seconds = 1 day
     Type: Number
-    #MinLength: 1
+    MinValue: 1
     ConstraintDescription: "Must be in seconds"
     Default: 86400
     
@@ -36,11 +36,11 @@ Globals:
     Runtime: python3.11
     CodeUri: monitor
     Architectures:
-      - arm64 #Lambda function will run on Arm-based AWS Graviton processors
+      - arm64 #Lambda function will run on Arm-based AWS Graviton processors. The Powertools Lamba layer will also be Arm based
     Environment:
         Variables:
           POWERTOOLS_METRICS_NAMESPACE: BackupsMonitoring
-          #POWERTOOLS_SERVICE_NAME: Backups #TODO see if this fixes the CloudWatch Math Search, but misses Logging info
+          POWERTOOLS_SERVICE_NAME: S3Backups #TODO see if this fixes the CloudWatch Math Search, but misses Logging info
           LOG_LEVEL: INFO
           SNSTopic: !Ref EmailNotificationsSNSTopic
           MetricName: !Ref MetricName
@@ -49,6 +49,7 @@ Globals:
 Resources:
   BackupBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "${MyBucket}"
     
@@ -57,7 +58,7 @@ Resources:
     Properties:
       Handler: metrics.lambda_handler
       Layers:
-      - arn:aws:lambda:af-south-1:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
+      - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
       Events:
         BackupEvent:
           Type: S3
@@ -74,7 +75,7 @@ Resources:
     Properties:
       Handler: alarms.lambda_handler
       Layers:
-      - arn:aws:lambda:af-south-1:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
+      - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
       Policies:
         - Statement:
           - Effect: "Allow"
@@ -99,28 +100,29 @@ Resources:
   CloudWatchDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties: 
-      DashboardName: BackupsMonitoring #TODO: Paramatrise region and period
-      DashboardBody: | #The | (pipe) indicates that everything below is a string literal
+      DashboardName: BackupsMonitoring #TODO: Paramatrise  period 
+      DashboardBody: !Sub "  
                   {
-                      "periodOverride": "inherit",
-                      "widgets": [
+                      \"periodOverride\": \"inherit\",
+                      \"widgets\": [
                           {
-                            "type":"metric",
-                            "x":0,
-                            "y":0,
-                            "width":12,
-                            "height":10,
-                            "properties":{
-                                "metrics":[
-                                  [ { "expression": "FILL(SEARCH(' {BackupsMonitoring, System} MetricName=\"Backups\" ', 'Sum'), 0)", "id": "e1" } ]
+                            \"type\":\"metric\",
+                            \"x\":0,
+                            \"y\":0,
+                            \"width\":12,
+                            \"height\":10,
+                            \"properties\":{
+                                \"metrics\":[
+                                  [ { \"expression\": \"FILL(SEARCH(' {BackupsMonitoring, ${DimensionName}} MetricName=\\\"${MetricName}\\\" ', 'Sum'), 0)\", \"id\": \"e1\" } ]
                                   ],
-                                "period":3600,
-                                "region":"af-south-1",
-                                "title":"Backups to S3",
-                                "legend": {
-                                    "position": "right"
+                                \"period\":${BackupFrequencyPeriod},
+                                \"region\":\"${AWS::Region}\",
+                                \"title\":\"Backups to S3\",
+                                \"legend\": {
+                                    \"position\": \"right\"
                                   }
                             }
                           }
                       ]
-                    }          
+                    }    
+                    "     
