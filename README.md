@@ -33,9 +33,9 @@ Assuming these systems run on on-premise servers, or even on Amazon EC2 instance
 
 An example could be:
 
-    `aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/`
+    aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/
 
-    `aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/`
+    aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/
 
 This line below in the [AWS Lambda function](https://github.com/aws-samples/monitor-backups-to-amazon-s3-using-amazon-cloudwatch/blob/main/monitor/app.py) determines the folder name, which is the metric we will monitor in CloudWatch. 
 
@@ -77,7 +77,7 @@ then changing the line below would make sure that the Backups folder is ignored,
 
 ## Automation and scale
 
-[AWS Serverless Application Model (AWS SAM)](https://aws.amazon.com/serverless/sam/) is an open-source framework that helps you build serverless applications in the AWS Cloud. AWS SAM will deploy and build the S3 bucket, with a trigger to the Lambda function, as well as an SNS topic to send email alerts
+[AWS Serverless Application Model (AWS SAM)](https://aws.amazon.com/serverless/sam/) is an open-source framework that helps you build serverless applications in the AWS Cloud. AWS SAM will deploy and build the S3 bucket, with a trigger to the Lambda function, a CloudWatch dashboard, a 2nd Lambda function to create CloudWatch alarms, as well as an SNS topic to send email alerts.
 
 ## Tools
 
@@ -85,12 +85,12 @@ The Serverless Application Model Command Line Interface (SAM CLI) is an extensio
 
 To use the SAM CLI, you need the following tools:
 
-* SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
+* [SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 * [Python 3 installed](https://www.python.org/downloads/)
 
 This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
 
-- monitor - this folder constain the pythonn code for the application's Lambda functions.
+- monitor - this folder constain the python code for the application's Lambda functions.
 - events - Invocation events that you can use to invoke the function.
 - tests - Unit tests for the application code.
 - template.yaml - A template that defines the application's AWS resources.
@@ -182,12 +182,13 @@ This will result in the creation of the following AWS resources:
 
 - Amazon S3 bucket
 - Amazon S3 event notification trigger to a Lambda function
-- AWS Lambda function that receives an event each time an object is created in Amazon S3, and based on the filename, creates a custom metric in Amazon CloudWatch that tracks the count of uploads
+- AWS Lambda function named `CustomMetricsFunction` that receives an event each time an object is created in Amazon S3, and based on the path/folder, creates a custom metric in Amazon CloudWatch that tracks the count of uploads
+- Another AWS Lambda function named `AlarmsFunction` that runs on daily schedule to create CloudWatch alarms for each metric
 - Amazon CloudWatch dashboard, with a graph for each metric, and a corresponding alarm
 - Amazon SNS Topic and subscription with the specified email address, that will be later used by an Amazon CloudWatch alarm to send notifications when the metric of uploads is breached, which is the result of no uploads to Amazon S3.
 
 ## Backup and upload data to Amazon S3
-Now that the Amazon S3 bucket and Lambda function have been created, we can now upload our backup data to the bucket. This will then trigger the **CustomMetrics** Lambda function, which will create custom metrics in Amazon CloudWatch.
+Now that the Amazon S3 bucket and Lambda function have been created, we can now upload our backup data to the bucket. This will then trigger the **CustomMetricsFunction**, which will create custom metrics in Amazon CloudWatch.
 
 You could use the following [AWS CLI S3 copy command](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/cp.html) to copy the backup files to the bucket: (Note: you must edit the placeholders )
 
@@ -204,11 +205,11 @@ Once these objects land in Amazon S3, the AWS Lambda function will publish a cus
 ## Verify CloudWatch dashboards and alerts
 
 ### Verify CloudWatch dashboard
-The SAM template deployed an Amazon CloudWatch dashboard named `BackupsMonitoring`. You can navigate to [CloudWatch in the management console](https://console.aws.amazon.com/cloudwatch/home#dashboards/), and [selecting the BackupsMonitoring dashboard](https://console.aws.amazon.com/cloudwatch/home#dashboards/dashboard/BackupsMonitoring).
+The SAM template deployed an Amazon CloudWatch dashboard named `BackupsMonitoring`. You can navigate to [CloudWatch in the management console](https://console.aws.amazon.com/cloudwatch/home#dashboards/), and [select the BackupsMonitoring dashboard](https://console.aws.amazon.com/cloudwatch/home#dashboards/dashboard/BackupsMonitoring).
 
 You will find a graph with data points for your backup data. Assuming you uploaded backup data for `web` and `crm`, you will find these on the legend of the graph. You may customise the timeline on the top right.
 
-You can follow [this AWS documentation guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/add_remove_graph_dashboard.html) in order to add more graphs
+You can follow [this AWS documentation guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/add_remove_graph_dashboard.html) in order to add more graphs.
 
 
 ### Verify CloudWatch alarms to alert on backup failures
