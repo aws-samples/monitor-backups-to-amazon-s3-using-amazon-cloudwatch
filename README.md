@@ -301,14 +301,24 @@ The logs will indicate that the **CustomMetricsFunctions** created a CloudWatch 
 ```
 
 ## Estimated Costs
+- [S3 Pricing](https://aws.amazon.com/s3/pricing/)
+- [CloudWatch Pricing](https://aws.amazon.com/cloudwatch/pricing/)
+- [Lambda Pricing](https://aws.amazon.com/lambda/pricing/)
+
 Assuming the following:
 - US East (N. Virginia) Region
-- 10 systems backing up to S3 daily, so 300 backups per month
-- Creating one metric
+- 10 systems backing up to S3 daily, so 300 PUT requests per month
+- 10 CloudWatch metrics + dimensions per month
 - Each backup size is 100MB, so 3GB uploaded to S3 per month
 - CustomMetricsFunction invoked per backup, so 300 times per month, running for 100ms each
 - AlarmsFunction invoked once per day, so 30 times per month, running for 300ms each
-- 
+
+| Service | Dimensions | Costs |
+| ------- | ---------- | ----- |
+| Amazon CloudWatch | 10 Metrics, 300 requests | $4 per month
+| AWS Lambda | 330 requests, 300ms, 128GB memory| $0GB per month (free tier)
+| Amazon S3 | 3GB in S3 Standard, 300 PUT requests| $0.07 per month 
+| TOTAL | | $4.07 per month 
 
 ## Related resources
 ### References
