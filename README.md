@@ -64,7 +64,7 @@ then changing the line below would make sure that the `Applications` folder is i
 
 ## Limitations
 
-- The Amazon S3 bucket to be used must be a new bucket, and cannot already exist. If you want to use this solution with an already existing bucket, you may customise the template.yaml file to remove all references to the S3 bucket, and manually create an S3 Event Notification to the **CustomMetrics** Lambda function.
+- The Amazon S3 bucket to be used must be a new bucket, and cannot already exist. If you want to use this solution with an already existing bucket, you may customise the template.yaml file to remove all references to the S3 bucket, and [manually create an S3 Event Notification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html) to the **CustomMetrics** Lambda function.
 
 ## Architecture
 
@@ -190,9 +190,13 @@ This will result in the creation of the following AWS resources:
 ## Backup and upload data to Amazon S3
 Now that the Amazon S3 bucket and Lambda function have been created, we can now upload our backup data to the bucket. This will then trigger the **CustomMetricsFunction**, which will create custom metrics in Amazon CloudWatch.
 
-You could use the following [AWS CLI S3 copy command](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/cp.html) to copy the backup files to the bucket: (Note: you must edit the placeholders )
+You could use the following [AWS CLI S3 copy command](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/cp.html) to copy the backup files to the bucket: (Note: you must edit the placeholders)
 
 `aws s3 cp {source backup files} s3://{MyBucket}/{system}/`
+
+or using [sync](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/sync.html)
+
+`aws s3 sync . s3://{MyBucket}/{system}`
 
 An example could be:
 
@@ -296,6 +300,15 @@ The logs will indicate that the **CustomMetricsFunctions** created a CloudWatch 
 2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.899000 REPORT RequestId: cf95e553-6351-4798-98a3-e848d19629f2  Duration: 16.83 ms      Billed Duration: 17 ms   Memory Size: 128 MB     Max Memory Used: 44 MB  Init Duration: 162.32 ms
 ```
 
+## Estimated Costs
+Assuming the following:
+- US East (N. Virginia) Region
+- 10 systems backing up to S3 daily, so 300 backups per month
+- Creating one metric
+- Each backup size is 100MB, so 3GB uploaded to S3 per month
+- CustomMetricsFunction invoked per backup, so 300 times per month, running for 100ms each
+- AlarmsFunction invoked once per day, so 30 times per month, running for 300ms each
+- 
 
 ## Related resources
 ### References
