@@ -4,14 +4,14 @@ Amazon S3 offers industry-leading scalability and availability, and customers of
 
 ![Screenshot](./CloudWatchDashboad-Screenshot.png)
 
-In this pattern, we will create an Amazon S3 trigger to invoke a Lambda function that will publish a custom metric to Amazon CloudWatch, based on the backup data in S3. CloudWatch dashboards will allow you to monitor all backups in a single graph, and CloudWatch alarms will send notifications when backups fail, to help customers quickly resolve failing backups. 
+In this pattern, we will create an Amazon S3 trigger to invoke a Lambda function when backups are copied into the Amazon S3 bucket, that will publish a custom metric to Amazon CloudWatch, based on the backup data in Amazon S3. Amazon CloudWatch dashboards will allow you to monitor all backups in a single graph, and CloudWatch alarms will send notifications when backups fail, to help customers quickly resolve failing backups. 
 
 This pattern uses AWS serverless services to implement an event-driven approach to monitor backup files in Amazon S3.
 
 ## Prerequisites 
 
-- An active AWS account.
-- AWS Command Line Interface (AWS CLI), [installed](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) to work with the AWS account, on one or multiple systems/servers that are backing up to Amazon S3, with an IAM user that has access to the Amazon S3 bucket.
+- An active AWS account
+- AWS Command Line Interface (AWS CLI), [installed](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) to work with the AWS account, on one or multiple systems/servers that are backing up to Amazon SS3. Or you can use [other methods to backup data to Amazon S3](https://aws.amazon.com/backup-restore/use-cases/)
 - AWS Serverless Application Model Command Line Interface (AWS SAM CLI) [installed](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html), in order to deploy this architecture
 
 ## Assumptions 
@@ -41,7 +41,7 @@ This line below in the [AWS Lambda function](https://github.com/aws-samples/moni
 
 `metric_name = filename.split("/")[0]`
 
-That assumes that the root of the S3 bucket contains the folders with the backups files
+That assumes that the root of the S3 bucket contains the folders with the backups files, like this:
 ```
 S3Bucket
    ├── crm
@@ -52,12 +52,12 @@ S3Bucket
 This can be customised based on the file or directory structure of your backup date. So if your backup data folders for each system are not in the root of the S3 bucket, like this:
 ```
 S3Bucket
-└── Backups
+└── Applications
     ├── crm
     ├── db
     └── web
 ```
-then changing the line below would make sure that the Backups folder is ignored, and metrics are created for the system folders:
+then changing the line below would make sure that the `Applications` folder is ignored, and metrics are created for the system folders:
 
 `metric_name = filename.split("/")[1]`
 
@@ -112,7 +112,7 @@ The AWS Toolkit is an open source plug-in for popular IDEs that uses the SAM CLI
 * [VS Code](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/welcome.html)
 * [Visual Studio](https://docs.aws.amazon.com/toolkit-for-visual-studio/latest/user-guide/welcome.html)
 
-This application is built using the AWS Serverless Application Model (AWS SAM) for the python3.11 runtime, and options to bootstrap it with [AWS Lambda Powertools for Python (Lambda Powertools)](https://docs.powertools.aws.dev/lambda/python/latest/) utilities for Logging, Tracing and Metrics. Powertools is a developer toolkit to implement Serverless best practices and increase developer velocity. Powertools provides three core utilities:
+This application is built using the AWS Serverless Application Model (AWS SAM) for the `python3.11` runtime, and options to bootstrap it with [AWS Lambda Powertools for Python (Lambda Powertools)](https://docs.powertools.aws.dev/lambda/python/latest/) utilities for Logging, Tracing and Metrics. Powertools is a developer toolkit to implement Serverless best practices and increase developer velocity. Powertools provides three core utilities:
 
 * **[Tracing](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/tracer/)** - Decorators and utilities to trace Lambda function handlers, and both synchronous and asynchronous functions
 * **[Logging](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/logger/)** - Structured logging made easier, and decorator to enrich structured logging with key Lambda context details
@@ -166,7 +166,7 @@ The first command will build the source of your application. The second command 
 - **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
 - **AWS Region**: The AWS region you want to deploy your app to.
 - Parameter **MyBucket**: Please specify a name of a new S3 bucket you want created. Must not be an existing bucket, and the name must be globally unique. Please note the [S3 bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html). 
-- Parameter MyEmailAddress: Please specify an email address in order to receive email notifications of failed backups to Amazon S3.
+- Parameter **MyEmailAddress**: Please specify an email address in order to receive email notifications of failed backups to Amazon S3.
 - Parameter **MetricName** [Backups]: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups".
 - Parameter **DimensionName** [System]: The name of the CloudWatch dimension that should be used for the above metric, based on what each S3 folder represents. E.g each folder can represent a System, Location, or Customer, that you doing backups for. Can be any string. The default is "System".
 - Parameter **BackupFrequencyPeriod** [86400]: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? The value must be represented in seconds. The default is 86400 seconds = 1 day, i.e. you expect that files are backed up to S3 daily.
@@ -213,7 +213,7 @@ You can follow [this AWS documentation guide](https://docs.aws.amazon.com/Amazon
 
 
 ### Verify CloudWatch alarms to alert on backup failures
-We want Amazon CloudWatch to alert us when backups are not copied regularly to the Amazon S3 Bucket. To do this, we can use the 2nd AWS Lambda function named `AlarmsFunction` that will create alarms for each metric created above. You can wait for the `AlarmsFunction` to run on a schedule once a day, or you can manually invoke it, with the correct stack name you chose when running the `sam deploy --guided` command earlier: 
+We want Amazon CloudWatch to alert us when backups are not copied regularly to the Amazon S3 Bucket. To do this, we can use the 2nd AWS Lambda function named `AlarmsFunction` that will create alarms for each metric created above. You can wait for the `AlarmsFunction` to run on a schedule once a day, or you can [manually invoke it](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/using-sam-cli-remote-invoke.html), with the correct stack name you chose when running the `sam deploy --guided` command earlier: 
 
 `sam remote invoke --stack-name  monitor-backups-to-amazon-s3-using-amazon-cloudwatch AlarmsFunction`
 
@@ -231,13 +231,14 @@ You can follow this [AWS documentation guide](https://docs.aws.amazon.com/Amazon
 You will now receive an email from Amazon SNS whenever backup data from this system is not copied to Amazon S3 at least once a day. 
 
 ## Troubleshooting
-If metrics have not been created for each of the backup folders, you can view the AWS Lambda logs in a number of ways:
-- using the AWS SAM CLI, with the correct stack name you chose when running the `sam deploy --guided` command earlier, this command will show the AWS Lambda logs:
+If metrics have not been created on the CloudWatch dashboard for each of the backup folders, you can view the AWS Lambda **CustomMetricsFunctions** logs to identify the problem.
+You can view the AWS Lambda logs in a number of ways:
+- using the AWS SAM CLI, with the correct stack name you chose when running the `sam deploy --guided` command earlier, [this command will show the AWS Lambda logs](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-cli-command-reference-sam-logs.html):
 
     `sam logs --stack-name monitor-backups-to-amazon-s3-using-amazon-cloudwatch`
 - using the [Lambda console](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html#monitoring-cloudwatchlogs-console) 
 
-The logs will indicate that the **CustomMetrics** function created a CloudWatch metric and dimension for a file uploaded to `s3://myuniquebucket/web/backup-2023-09-14.tar.gz`
+The logs will indicate that the **CustomMetricsFunctions** created a CloudWatch metric and dimension for a file uploaded to `s3://myuniquebucket/web/backup-2023-09-14.tar.gz`
 
 ```
 2023/10/13/[$LATEST]fbd13160e9794b9da58305d2765ed9c6 2023-10-13T14:04:15.719000 INIT_START Runtime Version: python:3.11.v14     Runtime Version ARN: arn:aws:lambda:af-south-1::runtime:f718e534828938076c2b13386127506049c7b53188aace2667ca4ab835d5de40
