@@ -305,20 +305,21 @@ The logs will indicate that the **CustomMetricsFunctions** created a CloudWatch 
 - [CloudWatch Pricing](https://aws.amazon.com/cloudwatch/pricing/)
 - [Lambda Pricing](https://aws.amazon.com/lambda/pricing/)
 
-Assuming the following:
+
+| Service | Dimensions | Costs |
+| ------- | ---------- | ----- |
+| Amazon CloudWatch | 10 Metrics, 300 requests, 1 dashboard | $4 per month
+| AWS Lambda | 330 requests, 300ms, 128GB memory| $0 per month
+| Amazon S3 | 30GB in S3 Glacier Instant Retrieval, 300 PUT requests| $0.13 per month 
+| TOTAL | | $4.13 per month 
+
+Based on the following:
 - US East (N. Virginia) Region
 - 10 systems backing up to [Amazon S3 Glacier Instant Retrieval](https://aws.amazon.com/s3/storage-classes/glacier/instant-retrieval/) daily, so 300 PUT requests per month
 - 10 CloudWatch metrics + dimensions per month
 - Each backup size is 100MB, so 30GB uploaded to S3 per month
 - CustomMetricsFunction invoked per backup, so 300 times per month, running for 100ms each
 - AlarmsFunction invoked once per day, so 30 times per month, running for 300ms each
-
-| Service | Dimensions | Costs |
-| ------- | ---------- | ----- |
-| Amazon CloudWatch | 10 Metrics, 300 requests | $4 per month
-| AWS Lambda | 330 requests, 300ms, 128GB memory| $0 per month (free tier)
-| Amazon S3 | 3GB in S3 Glacier Instant Retrieval, 300 PUT requests| $0.13 per month 
-| TOTAL | | $4.13 per month 
 
 ## Related resources
 ### References
