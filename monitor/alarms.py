@@ -16,7 +16,7 @@ def create_metric_alarm(dimension_value):
     logger.info("Creating CloudWatch Alarm for: " + dimension_value)
     put_metric = client.put_metric_alarm(
                 AlarmName=dimension_value,
-                AlarmDescription="Backups to S3: " + dimension_value,
+                AlarmDescription="CloudWatch Alert: Backups to S3 has failed for " + dimension_value,
                 MetricName=MetricName,
                 Period=int(BackupFrequencyPeriod),
                 Statistic='Sum',
