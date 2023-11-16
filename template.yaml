@@ -98,9 +98,14 @@ Resources:
               - '*'
       Events:
         Schedule:
-          Type: Schedule
+          Type: ScheduleV2
           Properties:
-            Schedule: cron(0 5 * * ? *) #run once a day at 5am (in GMT), every day, on the hour (at the 0th minute)
+            Description: run once a day, every day, starting based on when this schedule was created. So it will first run as soon as this stack is deployed, and recur every day at that time.
+            ScheduleExpression: rate(24 hours) 
+            ScheduleExpressionTimezone: GMT
+            FlexibleTimeWindow:
+              Mode: FLEXIBLE
+              MaximumWindowInMinutes: 15
 
   EmailNotificationsSNSTopic:
     Type: AWS::SNS::Topic
