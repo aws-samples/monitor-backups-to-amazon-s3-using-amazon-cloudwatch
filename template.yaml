@@ -8,27 +8,35 @@ Parameters:
   MyBucket:
     Description: Amazon S3 Bucket to store backup data. Must not be an existing bucket, and the name must be globally unique. Please see S3 Bucket naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
     Type: String
-    MinLength: 1
+    MinLength: 3
+    MaxLength: 63
+    ConstraintDescription: "Bucket names must be between 3 (min) and 63 (max) characters long, can consist only of lowercase letters, numbers, dots (.), and hyphens (-), must begin and end with a letter or number."
   MyEmailAddress:
     Description: SNS Subscription Email address to receive notifications from CloudWatch alarms of failed backups to S3. Must be a valid email address.
     Type: String
     MinLength: 5
+    AllowedPattern: '[^@]+@[^@]+\.[^@]+'
+    ConstraintDescription: "Must be a valid email address"
   MetricName:
     Description: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups".
     Type: String
     MinLength: 1
-    Default: "Backups"
+    MaxLength: 255
+    Default: "Backups" 
+    ConstraintDescription: "MetricName valid characters are A-Z, a-z, 0-9, “-” and “_” "
   DimensionName:
     Description: The name of the CloudWatch dimension that should be used for the above metric, based on what each S3 folder represents. E.g each folder can represent a System, Location or Customer, that you doing backups for. Can be any string. The default is "System".
     Type: String
     MinLength: 1
+    MaxLength: 255
     Default: "System"
+    ConstraintDescription: "DimensionName valid characters are A-Z, a-z, 0-9, “-” and “_” "
   BackupFrequencyPeriod:
     Description: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? The value must be represented in seconds. The default is 86400 seconds = 1 day, i.e. you expect that files are backed up to S3 daily.
     Type: Number
     MinValue: 1
-    ConstraintDescription: "Must be in seconds"
     Default: 86400
+    ConstraintDescription: "BackupFrequencyPeriod must be in specified in seconds"
     
 Globals: 
   Function:
