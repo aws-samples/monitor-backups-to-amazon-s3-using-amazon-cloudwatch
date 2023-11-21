@@ -5,6 +5,14 @@ Description: >
   https://github.com/aws-samples/monitor-backups-to-amazon-s3-using-amazon-cloudwatch
 
 Parameters:
+  CreateBucket:
+    Description: Should this SAM template create a new Amazon S3 bucket, or does your bucket already exist?
+    Default: create
+    Type: String
+    AllowedValues:
+      - create
+      - reuse
+    ConstraintDescription: "Must specify 'create' to create a new S3 bucket, or 'reuse' to re-use an existing bucket"
   MyBucket:
     Description: Amazon S3 Bucket to store backup data. Must not be an existing bucket, and the name must be globally unique. Please see S3 Bucket naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
     Type: String
@@ -34,10 +42,14 @@ Parameters:
   BackupFrequencyPeriod:
     Description: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? The value must be represented in seconds. The default is 86400 seconds = 1 day, i.e. you expect that files are backed up to S3 daily.
     Type: Number
-    MinValue: 1
+    MinValue: 60
     Default: 86400
-    ConstraintDescription: "BackupFrequencyPeriod must be in specified in seconds"
-    
+    ConstraintDescription: "BackupFrequencyPeriod must be in specified in seconds, with a minimum value of 60 (seconds)"
+
+Conditions:
+  CreateS3Bucket: !Equals [!Ref CreateBucket, create]
+  ReuseS3Bucket: !Equals [!Ref CreateBucket, reuse]
+
 Globals: 
   Function:
     Timeout: 5
@@ -54,11 +66,13 @@ Globals:
           SNSTopic: !Ref EmailNotificationsSNSTopic
           MetricName: !Ref MetricName
           DimensionName: !Ref DimensionName
-          BackupFrequencyPeriod: !Ref BackupFrequencyPeriod  
+          MyBucket: !Ref MyBucket
+          BackupFrequencyPeriod: !Ref BackupFrequencyPeriod 
 
 Resources:
   BackupBucket:
     Type: AWS::S3::Bucket
+    Condition: CreateS3Bucket #only create this bucket if CreateBucket = create
     DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "${MyBucket}"
@@ -66,7 +80,7 @@ Resources:
   CustomMetricsFunction:
     Type: AWS::Serverless::Function    
     Properties:
-      Description: This Lambda functions gets invoked each time a backup is copied to S3. It pushes a metric and dimension to CloudWatch for each backup
+      Description: This Lambda function gets invoked each time a backup is copied to S3. It pushes a metric and dimension to CloudWatch for each backup
       Handler: metrics.lambda_handler
       Layers:
       - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
@@ -84,7 +98,7 @@ Resources:
   AlarmsFunction:
     Type: AWS::Serverless::Function    
     Properties:
-      Description: This Lambda functions runs on a EventBridge schedule. It checks the metrics that exist (created by the CustomMetrics function), and creates CloudWatch Alarms for each metric.
+      Description: This Lambda function runs on a EventBridge schedule. It checks the metrics that exist (created by the CustomMetrics function), and creates CloudWatch Alarms for each metric.
       Handler: alarms.lambda_handler
       Layers:
       - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
@@ -100,12 +114,36 @@ Resources:
         Schedule:
           Type: ScheduleV2
           Properties:
-            Description: run once a day, every day, starting based on when this schedule was created. So it will first run as soon as this stack is deployed, and recur every day at that time.
+            Description: run once a day, every day, starting based on when this schedule was created. So it will first run as soon as this stack is deployed, within a window of 15 minutes, and recur every day at that time.
             ScheduleExpression: rate(24 hours) 
             ScheduleExpressionTimezone: GMT
             FlexibleTimeWindow:
               Mode: FLEXIBLE
               MaximumWindowInMinutes: 15
+
+  HelperS3NotifcationFunction:
+    Type: AWS::Serverless::Function    
+    Condition: ReuseS3Bucket  #only create this functions if CreateBucket = reuse. 
+    Properties:
+      Description: This Lambda function will create an Event Notification for the existing bucket to the CustomMetricsFunction Lambda
+      Handler: helper_s3notification.lambda_handler
+      Layers:
+      - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
+      Environment:
+        Variables:
+          CustomMetricsFunctionArn: !GetAtt CustomMetricsFunction.Arn
+      Policies:
+        - Statement:
+          - Effect: "Allow"
+            Action: 
+             - s3:PutBucketNotification
+            Resource: 
+             - !Sub '*' #TODO: make this specific to the bucket
+
+  CreateS3Notifcation:
+    Type: Custom::CreateS3NotifcationFunction
+    Properties:
+      ServiceToken: !GetAtt HelperS3NotifcationFunction.Arn
 
   EmailNotificationsSNSTopic:
     Type: AWS::SNS::Topic
