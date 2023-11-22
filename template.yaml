@@ -40,7 +40,7 @@ Parameters:
     Default: "System"
     ConstraintDescription: "DimensionName valid characters are A-Z, a-z, 0-9, “-” and “_” "
   BackupFrequencyPeriod:
-    Description: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? The value must be represented in seconds. The default is 86400 seconds = 1 day, i.e. you expect that files are backed up to S3 daily.
+    Description: What schedule/frequency does your backups run, e.g. Hourly, daily, weekly? The value must be represented in seconds (minimum 60 seconds). The default is 86400 seconds = 1 day, i.e. you expect that files are backed up to S3 daily.
     Type: Number
     MinValue: 60
     Default: 86400

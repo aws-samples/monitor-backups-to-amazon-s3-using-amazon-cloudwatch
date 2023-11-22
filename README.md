@@ -1,8 +1,8 @@
 # Build Amazon CloudWatch dashboards and alarms to monitor backups to Amazon S3
 
-Amazon S3 offers industry-leading scalability and availability, and customers often use Amazon S3 as a backup target, for data from on-premise systems, including Linux or Windows servers. Usually, the AWS CLI is used in a script to copy/upload these backups to Amazon S3. Customers may struggle to ensure that these backup uploads are successful, and if they fail, to notify teams to resolve the issue.  [Amazon S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) provides a mechanism for initiating events when backups land in an S3 bucket. 
+Amazon S3 offers industry-leading scalability and availability, and customers often use Amazon S3 as a backup target, for data from on-premise systems, including Linux or Windows servers. Usually, the AWS CLI is used in a script to copy/upload these backups to Amazon S3. Customers may struggle to ensure that these backup uploads are successful, and if they fail, to notify teams to resolve the issue.  [Amazon S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) provides a mechanism for initiating events when backups are uploaded to an Amazon S3 bucket. 
 
-This pattern uses AWS serverless services to implement an event-driven approach to monitor backup files ([objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingObjects.html))  in Amazon S3. It will create an Amazon S3 trigger to invoke a Lambda function when backups are copied into the Amazon S3 bucket, that will publish a custom metric to Amazon CloudWatch, based on the backup data in Amazon S3. Amazon CloudWatch dashboards will allow customers to monitor all backups in a single graph, and CloudWatch alarms will send notifications when backup uploads to Amazon S3 fail, to help customers quickly resolve failing backups. This pattern will create a CloudWatch dashboard like this:
+This pattern uses AWS serverless services to implement an event-driven approach to monitor backup files in Amazon S3. It will create an Amazon S3 trigger to invoke a Lambda function when backups are copied into the Amazon S3 bucket, that will publish a custom metric to Amazon CloudWatch, based on the backup data in Amazon S3. Amazon CloudWatch dashboards will allow customers to monitor all backups in a single graph, and CloudWatch alarms will send notifications when backup uploads to Amazon S3 fail, to help customers quickly resolve failing backups. This pattern will create a CloudWatch dashboard like this:
 
 ![Screenshot](images/CloudWatchDashboad-Screenshot.png)
 
@@ -15,7 +15,7 @@ This pattern uses AWS serverless services to implement an event-driven approach 
 
 ## Assumptions 
 
-You can choose how to structure your backup data in the Amazon S3 bucket, based on your current setup. The default behaviour of the Lambda function assumes that in the root of the bucket, there will be folders ([Amazon S3 prefixes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-prefixes.html)) that hold backup data for different types of systems, applications, locations, customers, or any other structure you want to monitor. E.g. lets say you have three different types of applications that you are backing up data for: a web application, a CRM application, and a database. In this case, each application will be backed up to three different folders in the same bucket, namely:
+You can choose how to structure your backup data in the Amazon S3 bucket, based on your current setup. The default behaviour of the Lambda function assumes that in the root of the bucket, there will be folders ([Amazon S3 prefixes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-prefixes.html)) that hold backup files [(objects)](([objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingObjects.html))) for different types of systems, applications, locations, customers, or any other structure you want to monitor. E.g. lets say you have three different types of applications that you are backing up data for: a web application, a CRM application, and a database. In this case, each application will be backed up to three different folders in the same bucket, namely:
 
     - web
     - crm
@@ -30,7 +30,11 @@ Assuming these systems run on on-premise servers, or even on Amazon EC2 instance
 
 `aws s3 cp {source backup files} s3://{MyBucket}/{system}/`
 
-Some examples could be:
+or using [sync:](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/sync.html)
+
+`aws s3 sync . s3://{MyBucket}/{system}`
+
+These are some examples, where you upload backups for 'web' and 'crm', to the [Amazon S3 Glacier Deep Archive storage class:](https://aws.amazon.com/s3/storage-classes/glacier/)
 
     aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/ --storage-class DEEP_ARCHIVE
 
@@ -64,7 +68,7 @@ then changing the line below would make sure that the `Applications` folder is i
 
 ## Architecture
 
-- Amazon S3 bucket
+- Amazon S3
 - Amazon Lambda
 - Amazon CloudWatch
 - Amazon SNS
@@ -98,7 +102,7 @@ The first command will build the source of your application. The second command 
 - **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
 - **AWS Region**: The AWS region you want to deploy your app to.
 - Parameter **CreateBucket**: Should this SAM template create a new Amazon S3 bucket, or does your bucket already exist? Please use 'create' to create a new S3 bucket, or 'reuse' to re-use an existing bucket. The default is 'create'.
-- Parameter **MyBucket**: Please specify a name of a new S3 bucket you want created. Must not be an existing bucket, and the name must be globally unique. Please note the [S3 bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html). 
+- Parameter **MyBucket**: Please specify a name of the Amazon S3 bucket (irrespective if its new or existing). Must not be an existing bucket, and the name must be globally unique. Please note the [S3 bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html). 
 - Parameter **MyEmailAddress**: Please specify an email address in order to receive email notifications of failed backups to Amazon S3.
 - Parameter **MetricName** [Backups]: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups".
 - Parameter **DimensionName** [System]: The name of the CloudWatch dimension that should be used for the above metric, based on what each S3 folder represents. E.g each folder can represent a System, Location, or Customer, that you doing backups for. Can be any string. The default is "System".
@@ -133,13 +137,13 @@ or using [sync:](https://awscli.amazonaws.com/v2/documentation/api/latest/refere
 
 `aws s3 sync . s3://{MyBucket}/{system}`
 
-Some examples could be, where you upload backups for 'web' and 'crm', to the [Amazon S3 Glacier Deep Archive storage class](https://aws.amazon.com/s3/storage-classes/glacier/)
+These are some examples, where you upload backups for 'web' and 'crm', to the [Amazon S3 Glacier Deep Archive storage class:](https://aws.amazon.com/s3/storage-classes/glacier/)
 
 `aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/ --storage-class DEEP_ARCHIVE`
 
 `aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/ --storage-class DEEP_ARCHIVE`
 
-Once these objects land in Amazon S3, the AWS Lambda function will publish a custom metric in Amazon CloudWatch for each folder that has data uploaded to it.
+Once these objects are uploaded to Amazon S3, the AWS Lambda `CustomMetricsFunction` will publish a custom metric in Amazon CloudWatch for each folder that has data uploaded to it.
 
 ## Verify CloudWatch dashboards and alerts
 
@@ -266,7 +270,7 @@ Based on the following:
 
 ## Automation and scale
 
-[AWS Serverless Application Model (AWS SAM)](https://aws.amazon.com/serverless/sam/) is an open-source framework that helps you build serverless applications in the AWS Cloud. AWS SAM will deploy and build the S3 bucket, with a trigger to the Lambda function, a CloudWatch dashboard, a 2nd Lambda function to create CloudWatch alarms, as well as an SNS topic to send email alerts.
+[AWS Serverless Application Model (AWS SAM)](https://aws.amazon.com/serverless/sam/) is an open-source framework that helps you build serverless applications in the AWS Cloud. AWS SAM will automatically deploy all the resources in this pattern.
 
 This application is built using AWS SAM and options to bootstrap it with [AWS Lambda Powertools for Python (Lambda Powertools)](https://docs.powertools.aws.dev/lambda/python/latest/) utilities for Logging, Tracing and Metrics. Powertools is a developer toolkit to implement Serverless best practices and increase developer velocity. 
 
@@ -276,7 +280,7 @@ This project contains source code and supporting files for a serverless applicat
 
 - monitor - this folder constain the python code for the application's Lambda functions.
 - template.yaml - A SAM template that defines the application's AWS resources.
-- images - this folder contains the images used in this README
+- images - this folder contains the images used in this pattern.
 
 The application uses several AWS resources, including an Amazon S3 bucket, AWS Lambda functions and Amazon CloudWatch dashboards, metrics and alarms. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
 
