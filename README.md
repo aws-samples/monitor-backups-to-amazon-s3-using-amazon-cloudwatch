@@ -1,22 +1,21 @@
 # Build Amazon CloudWatch dashboards and alarms to monitor backups to Amazon S3
 
-Amazon S3 offers industry-leading scalability and availability, and customers often use Amazon S3 as a backup target, for data from on-premise systems, including Linux or Windows servers. Usually, the AWS CLI is used in a script to copy these backups to Amazon S3. Customers may struggle to ensure that these backups are successful, and if they fail, to notify teams to resolve the issue.  [Amazon S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) provides a mechanism for initiating events when backups land in an S3 bucket. 
+Amazon S3 offers industry-leading scalability and availability, and customers often use Amazon S3 as a backup target, for data from on-premise systems, including Linux or Windows servers. Usually, the AWS CLI is used in a script to copy/upload these backups to Amazon S3. Customers may struggle to ensure that these backup uploads are successful, and if they fail, to notify teams to resolve the issue.  [Amazon S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) provides a mechanism for initiating events when backups land in an S3 bucket. 
 
-![Screenshot](./CloudWatchDashboad-Screenshot.png)
+This pattern uses AWS serverless services to implement an event-driven approach to monitor backup files ([objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingObjects.html))  in Amazon S3. It will create an Amazon S3 trigger to invoke a Lambda function when backups are copied into the Amazon S3 bucket, that will publish a custom metric to Amazon CloudWatch, based on the backup data in Amazon S3. Amazon CloudWatch dashboards will allow customers to monitor all backups in a single graph, and CloudWatch alarms will send notifications when backup uploads to Amazon S3 fail, to help customers quickly resolve failing backups. This pattern will create a CloudWatch dashboard like this:
 
-In this pattern, we will create an Amazon S3 trigger to invoke a Lambda function when backups are copied into the Amazon S3 bucket, that will publish a custom metric to Amazon CloudWatch, based on the backup data in Amazon S3. Amazon CloudWatch dashboards will allow you to monitor all backups in a single graph, and CloudWatch alarms will send notifications when backups fail, to help customers quickly resolve failing backups. 
-
-This pattern uses AWS serverless services to implement an event-driven approach to monitor backup files in Amazon S3.
+![Screenshot](images/CloudWatchDashboad-Screenshot.png)
 
 ## Prerequisites 
 
 - An active AWS account
-- AWS Command Line Interface (AWS CLI), [installed](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) to work with the AWS account, on one or multiple systems/servers that are backing up to Amazon SS3. Or you can use [other methods to backup data to Amazon S3](https://aws.amazon.com/backup-restore/use-cases/)
-- AWS Serverless Application Model Command Line Interface (AWS SAM CLI) [installed](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html), in order to deploy this architecture
+- AWS Command Line Interface (AWS CLI) [installed](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) to work with the AWS account, on one or multiple systems/servers that are backing up to Amazon S3. Or you can use [other methods to backup data to Amazon S3](https://aws.amazon.com/backup-restore/use-cases/)
+- AWS Serverless Application Model Command Line Interface (AWS SAM CLI) [installed](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+- Python 3 [installed](https://www.python.org/downloads/)
 
 ## Assumptions 
 
-You can choose how to structure your backup data in the Amazon S3 bucket, based on your current setup. The default behaviour of the Lambda function assumes that in the root of the bucket, there will be folders that hold backup data for different types of systems, applications, locations, customers, or any other structure you want to monitor. E.g. lets say you have three different types of applications that you are backing up data for: a web application, a CRM application, and a database. In this case, each application will be backed up to three different folders in the same bucket, namely:
+You can choose how to structure your backup data in the Amazon S3 bucket, based on your current setup. The default behaviour of the Lambda function assumes that in the root of the bucket, there will be folders ([Amazon S3 prefixes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-prefixes.html)) that hold backup data for different types of systems, applications, locations, customers, or any other structure you want to monitor. E.g. lets say you have three different types of applications that you are backing up data for: a web application, a CRM application, and a database. In this case, each application will be backed up to three different folders in the same bucket, namely:
 
     - web
     - crm
@@ -31,13 +30,13 @@ Assuming these systems run on on-premise servers, or even on Amazon EC2 instance
 
 `aws s3 cp {source backup files} s3://{MyBucket}/{system}/`
 
-An example could be:
+Some examples could be:
 
-    aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/
+    aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/ --storage-class DEEP_ARCHIVE
 
-    aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/
+    aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/ --storage-class DEEP_ARCHIVE
 
-This line below in the [AWS Lambda function](https://github.com/aws-samples/monitor-backups-to-amazon-s3-using-amazon-cloudwatch/blob/main/monitor/app.py) determines the folder name, which is the metric we will monitor in CloudWatch. 
+This line below in the [AWS Lambda CustomMetrics function](https://github.com/aws-samples/monitor-backups-to-amazon-s3-using-amazon-cloudwatch/blob/main/monitor/metrics.py) determines the folder name, which is the metric we will monitor in CloudWatch. 
 
 `metric_name = filename.split("/")[0]`
 
@@ -49,7 +48,7 @@ S3Bucket
    └── web
 ```
 
-This can be customised based on the file or directory structure of your backup date. So if your backup data folders for each system are not in the root of the S3 bucket, like this:
+This can be customised based on the file or directory structure of your backup data. So if your backup data folders for each system are not in the root of the S3 bucket, like this:
 ```
 S3Bucket
 └── Applications
@@ -62,9 +61,6 @@ then changing the line below would make sure that the `Applications` folder is i
 `metric_name = filename.split("/")[1]`
 
 
-## Limitations
-
-- The Amazon S3 bucket to be used must be a new bucket, and cannot already exist. If you want to use this solution with an already existing bucket, you may customise the template.yaml file to remove all references to the S3 bucket, and [manually create an S3 Event Notification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html) to the **CustomMetrics** Lambda function.
 
 ## Architecture
 
@@ -73,78 +69,14 @@ then changing the line below would make sure that the `Applications` folder is i
 - Amazon CloudWatch
 - Amazon SNS
 
-![Architecture](./architecture.png)
+![Architecture](images/architecture.png)
 
-## Automation and scale
-
-[AWS Serverless Application Model (AWS SAM)](https://aws.amazon.com/serverless/sam/) is an open-source framework that helps you build serverless applications in the AWS Cloud. AWS SAM will deploy and build the S3 bucket, with a trigger to the Lambda function, a CloudWatch dashboard, a 2nd Lambda function to create CloudWatch alarms, as well as an SNS topic to send email alerts.
-
-## Tools
-
-The Serverless Application Model Command Line Interface (SAM CLI) is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. It uses Docker to run your functions in an Amazon Linux environment that matches Lambda. It can also emulate your application's build environment and API.
-
-To use the SAM CLI, you need the following tools:
-
-* [SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-* [Python 3 installed](https://www.python.org/downloads/)
-
-This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
-
-- monitor - this folder constain the python code for the application's Lambda functions.
-- events - Invocation events that you can use to invoke the function.
-- tests - Unit tests for the application code.
-- template.yaml - A template that defines the application's AWS resources.
-
-The application uses several AWS resources, including an Amazon S3 bucket, AWS Lambda functions and Amazon CloudWatch dashboards, metrics and alarms. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
-
-If you prefer to use an integrated development environment (IDE) to build and test your application, you can use the AWS Toolkit.
-The AWS Toolkit is an open source plug-in for popular IDEs that uses the SAM CLI to build and deploy serverless applications on AWS. The AWS Toolkit also adds a simplified step-through debugging experience for Lambda function code. See the following links to get started.
-
-* [CLion](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [GoLand](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [IntelliJ](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [WebStorm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [Rider](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [PhpStorm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [PyCharm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [RubyMine](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [DataGrip](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [VS Code](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/welcome.html)
-* [Visual Studio](https://docs.aws.amazon.com/toolkit-for-visual-studio/latest/user-guide/welcome.html)
-
-This application is built using the AWS Serverless Application Model (AWS SAM) for the `python3.11` runtime, and options to bootstrap it with [AWS Lambda Powertools for Python (Lambda Powertools)](https://docs.powertools.aws.dev/lambda/python/latest/) utilities for Logging, Tracing and Metrics. Powertools is a developer toolkit to implement Serverless best practices and increase developer velocity. Powertools provides three core utilities:
-
-* **[Tracing](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/tracer/)** - Decorators and utilities to trace Lambda function handlers, and both synchronous and asynchronous functions
-* **[Logging](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/logger/)** - Structured logging made easier, and decorator to enrich structured logging with key Lambda context details
-* **[Metrics](https://awslabs.github.io/aws-lambda-powertools-python/latest/core/metrics/)** - Custom Metrics created asynchronously via CloudWatch Embedded Metric Format (EMF)
-
-### Installing AWS Lambda Powertools for Python
-
-With [pip](https://pip.pypa.io/en/latest/index.html) installed, run: 
-
-```bash
-pip install aws-lambda-powertools
-```
-
-### Powertools Examples
-
-* [Tutorial](https://awslabs.github.io/aws-lambda-powertools-python/latest/tutorial)
-* [Serverless Shopping cart](https://github.com/aws-samples/aws-serverless-shopping-cart)
-* [Serverless Airline](https://github.com/aws-samples/aws-serverless-airline-booking)
-* [Serverless E-commerce platform](https://github.com/aws-samples/aws-serverless-ecommerce-platform)
-* [Serverless GraphQL Nanny Booking Api](https://github.com/trey-rosius/babysitter_api)
-
-## Best practices
-
-Event driven programs use events to initiate succeeding steps in a process. For example, the completion of an upload job may then initiate an image processing job. This allows developers to create complex architectures by using the principle of decoupling. Decoupling is preferable for many workflows, as it allows each component to perform its tasks independently, which improves efficiency. Examples are ecommerce order processing, image processing, and other long running batch jobs.
-
-[Amazon Simple Storage Service (S3)](https://aws.amazon.com/s3/) is an object-based storage solution from Amazon Web Services (AWS) that allows you to store and retrieve any amount of data, at any scale. [Amazon S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) provides users a mechanism for initiating events when certain actions take place inside an S3 bucket.
-
-Using AWS serverless services to implement event-driven approach will allow you to build scalable, fault tolerant applications. AWS Lambda is a serverless, event-driven compute service that lets you run code for virtually any type of application or backend service without provisioning or managing servers. You can use Lambda to process event notifications from Amazon Simple Storage Service. Amazon S3 can send an event to a Lambda function when an object is created or deleted.
 
 ## Deploy using AWS SAM
+Follow these steps to deploy this pattern.
+
 ### Clone the repo
-You can use the [AWS Cloud9 IDE](https://aws.amazon.com/cloud9/) or any another IDE (for example, Visual Studio Code or IntelliJ IDEA) for this pattern.
+You can use any terminal, the [AWS Cloud9 IDE](https://aws.amazon.com/cloud9/), or any another IDE (for example, Visual Studio Code or IntelliJ IDEA) for this pattern.
 
 Run the following command to clone the application's repository into your IDE:
 
@@ -165,6 +97,7 @@ The first command will build the source of your application. The second command 
 
 - **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
 - **AWS Region**: The AWS region you want to deploy your app to.
+- Parameter **CreateBucket**: Should this SAM template create a new Amazon S3 bucket, or does your bucket already exist? Please use 'create' to create a new S3 bucket, or 'reuse' to re-use an existing bucket. The default is 'create'.
 - Parameter **MyBucket**: Please specify a name of a new S3 bucket you want created. Must not be an existing bucket, and the name must be globally unique. Please note the [S3 bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html). 
 - Parameter **MyEmailAddress**: Please specify an email address in order to receive email notifications of failed backups to Amazon S3.
 - Parameter **MetricName** [Backups]: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups".
@@ -180,12 +113,14 @@ For future deploys, you can just run:
 
 This will result in the creation of the following AWS resources:
 
-- Amazon S3 bucket
+- Amazon S3 bucket (or link to an existing bucket if specified)
 - Amazon S3 event notification trigger to a Lambda function
 - AWS Lambda function named `CustomMetricsFunction` that receives an event each time an object is created in Amazon S3, and based on the path/folder, creates a custom metric in Amazon CloudWatch that tracks the count of uploads
-- Another AWS Lambda function named `AlarmsFunction` that runs on daily schedule to create CloudWatch alarms for each metric
+- A second AWS Lambda function named `AlarmsFunction` that runs on a daily schedule to create CloudWatch alarms for each metric
+- Optionally, a third AWS Lambda function named `HelperS3NotifcationFunction` that is only deployed if an existing S3 bucket is used. This function will create an [S3 Notification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventNotifications.html) between the existing bucket and `CustomMetricsFunction` 
 - Amazon CloudWatch dashboard, with a graph for each metric, and a corresponding alarm
-- Amazon SNS Topic and subscription with the specified email address, that will be later used by an Amazon CloudWatch alarm to send notifications when the metric of uploads is breached, which is the result of no uploads to Amazon S3.
+- Amazon SNS Topic and subscription with the specified email address, that will be later used by an Amazon CloudWatch alarm to send notifications when the metric of uploads is breached, which is the result of no uploads to Amazon S3
+- [Amazon EventBridge Scheduler](https://aws.amazon.com/eventbridge/scheduler/) that will run `AlarmsFunction` on a regular schedule.
 
 ## Backup and upload data to Amazon S3
 Now that the Amazon S3 bucket and Lambda function have been created, we can now upload our backup data to the bucket. This will then trigger the **CustomMetricsFunction**, which will create custom metrics in Amazon CloudWatch.
@@ -194,19 +129,22 @@ You could use the following [AWS CLI S3 copy command](https://awscli.amazonaws.c
 
 `aws s3 cp {source backup files} s3://{MyBucket}/{system}/`
 
-or using [sync](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/sync.html)
+or using [sync:](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/sync.html)
 
 `aws s3 sync . s3://{MyBucket}/{system}`
 
-An example could be:
+Some examples could be, where you upload backups for 'web' and 'crm', to the [Amazon S3 Glacier Deep Archive storage class](https://aws.amazon.com/s3/storage-classes/glacier/)
 
-`aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/`
+`aws s3 cp /web/backup-2023-09-14.tar.gz s3://myuniquebucket/web/ --storage-class DEEP_ARCHIVE`
 
-`aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/`
+`aws s3 cp /crm/backup-2023-09-14.tar.gz s3://myuniquebucket/crm/ --storage-class DEEP_ARCHIVE`
 
 Once these objects land in Amazon S3, the AWS Lambda function will publish a custom metric in Amazon CloudWatch for each folder that has data uploaded to it.
 
 ## Verify CloudWatch dashboards and alerts
+
+### Confirm SNS Subscription
+Amazon SNS will send a subscription confirmation message to the email addressed you used. Please click on this link in the email to confirm the subscription. Amazon CloudWatch alarms will not be able to send emails via Amazon SNS until the subscription has been confirmed. 
 
 ### Verify CloudWatch dashboard
 The SAM template deployed an Amazon CloudWatch dashboard named `BackupsMonitoring`. You can navigate to [CloudWatch in the management console](https://console.aws.amazon.com/cloudwatch/home#dashboards/), and [select the BackupsMonitoring dashboard](https://console.aws.amazon.com/cloudwatch/home#dashboards/dashboard/BackupsMonitoring).
@@ -219,7 +157,7 @@ You can follow [this AWS documentation guide](https://docs.aws.amazon.com/Amazon
 ### Verify CloudWatch alarms to alert on backup failures
 We want Amazon CloudWatch to alert us when backups are not copied regularly to the Amazon S3 Bucket. To do this, we can use the 2nd AWS Lambda function named `AlarmsFunction` that will create alarms for each metric created above. You can wait for the `AlarmsFunction` to run on a schedule once a day, or you can [manually invoke it](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/using-sam-cli-remote-invoke.html), with the correct stack name you chose when running the `sam deploy --guided` command earlier: 
 
-`sam remote invoke --stack-name  monitor-backups-to-amazon-s3-using-amazon-cloudwatch AlarmsFunction`
+`sam remote invoke --stack-name {my-stack-name} AlarmsFunction`
 
 and the output will indicate which alarms have been created:
 
@@ -235,11 +173,16 @@ You can follow this [AWS documentation guide](https://docs.aws.amazon.com/Amazon
 You will now receive an email from Amazon SNS whenever backup data from this system is not copied to Amazon S3 at least once a day. 
 
 ## Troubleshooting
+### CustomMetricsFunction not been invoked on each file uploaded to S3
+The AWS Lambda `CustomMetricsFunction` needs to be invoked each time a backup file is uploaded to the Amazon S3 bucket. If you are re-using your existing S3 bucket, the `HelperS3NotifcationFunction` was supposed to create the [S3 Event Notification](https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-event-notifications.html) between the S3 bucket and the `CustomMetricsFunction`. You can [manually create the S3 Event Notification](https://docs.aws.amazon.com/lambda/latest/dg/with-s3-example.html), or [check this out](https://repost.aws/knowledge-center/lambda-configure-s3-event-notification).
+
+
+### Metrics not created per backup folder
 If metrics have not been created on the CloudWatch dashboard for each of the backup folders, you can view the AWS Lambda **CustomMetricsFunctions** logs to identify the problem.
 You can view the AWS Lambda logs in a number of ways:
 - using the AWS SAM CLI, with the correct stack name you chose when running the `sam deploy --guided` command earlier, [this command will show the AWS Lambda logs](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-cli-command-reference-sam-logs.html):
 
-    `sam logs --stack-name monitor-backups-to-amazon-s3-using-amazon-cloudwatch`
+    `sam logs --stack-name {my-stack-name}`
 - using the [Lambda console](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html#monitoring-cloudwatchlogs-console) 
 
 The logs will indicate that the **CustomMetricsFunctions** created a CloudWatch metric and dimension for a file uploaded to `s3://myuniquebucket/web/backup-2023-09-14.tar.gz`
@@ -320,6 +263,31 @@ Based on the following:
 - Each backup size is 100MB, so 30GB uploaded to S3 per month
 - CustomMetricsFunction invoked per backup, so 300 times per month, running for 100ms each
 - AlarmsFunction invoked once per day, so 30 times per month, running for 300ms each
+
+## Automation and scale
+
+[AWS Serverless Application Model (AWS SAM)](https://aws.amazon.com/serverless/sam/) is an open-source framework that helps you build serverless applications in the AWS Cloud. AWS SAM will deploy and build the S3 bucket, with a trigger to the Lambda function, a CloudWatch dashboard, a 2nd Lambda function to create CloudWatch alarms, as well as an SNS topic to send email alerts.
+
+This application is built using AWS SAM and options to bootstrap it with [AWS Lambda Powertools for Python (Lambda Powertools)](https://docs.powertools.aws.dev/lambda/python/latest/) utilities for Logging, Tracing and Metrics. Powertools is a developer toolkit to implement Serverless best practices and increase developer velocity. 
+
+If you prefer to use an integrated development environment (IDE) to build and test your application, you can use the [AWS Toolkit](https://aws.amazon.com/visualstudiocode/).
+
+This project contains source code and supporting files for a serverless application that you can deploy with the SAM CLI. It includes the following files and folders.
+
+- monitor - this folder constain the python code for the application's Lambda functions.
+- template.yaml - A SAM template that defines the application's AWS resources.
+- images - this folder contains the images used in this README
+
+The application uses several AWS resources, including an Amazon S3 bucket, AWS Lambda functions and Amazon CloudWatch dashboards, metrics and alarms. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
+
+
+## Best practices
+
+Event driven programs use events to initiate succeeding steps in a process. For example, the completion of an upload job may then initiate an image processing job. This allows developers to create complex architectures by using the principle of decoupling. Decoupling is preferable for many workflows, as it allows each component to perform its tasks independently, which improves efficiency. Examples are ecommerce order processing, image processing, and other long running batch jobs.
+
+[Amazon Simple Storage Service (S3)](https://aws.amazon.com/s3/) is an object-based storage solution from Amazon Web Services (AWS) that allows you to store and retrieve any amount of data, at any scale. [Amazon S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html) provides users a mechanism for initiating events when certain actions take place inside an S3 bucket.
+
+Using AWS serverless services to implement event-driven approach will allow you to build scalable, fault tolerant applications. AWS Lambda is a serverless, event-driven compute service that lets you run code for virtually any type of application or backend service without provisioning or managing servers. You can use Lambda to process event notifications from Amazon Simple Storage Service. Amazon S3 can send an event to a Lambda function when an object is created or deleted.
 
 ## Related resources
 ### References

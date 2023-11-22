@@ -14,7 +14,7 @@ Parameters:
       - reuse
     ConstraintDescription: "Must specify 'create' to create a new S3 bucket, or 'reuse' to re-use an existing bucket"
   MyBucket:
-    Description: Amazon S3 Bucket to store backup data. Must not be an existing bucket, and the name must be globally unique. Please see S3 Bucket naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+    Description: Amazon S3 Bucket to store backup data, either a new bucket to be created, and an existing bucket to be re-used. The name must be globally unique. Please see S3 Bucket naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
     Type: String
     MinLength: 3
     MaxLength: 63
