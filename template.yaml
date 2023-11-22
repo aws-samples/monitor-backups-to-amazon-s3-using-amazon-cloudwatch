@@ -6,7 +6,7 @@ Description: >
 
 Parameters:
   CreateBucket:
-    Description: Should this SAM template create a new Amazon S3 bucket, or does your bucket already exist?
+    Description: Should this SAM template create a new Amazon S3 bucket, or does your bucket already exist? Please specify 'create' to create a new S3 bucket, or 'reuse' to re-use an existing bucket. The default is 'create'.
     Default: create
     Type: String
     AllowedValues:
@@ -14,7 +14,7 @@ Parameters:
       - reuse
     ConstraintDescription: "Must specify 'create' to create a new S3 bucket, or 'reuse' to re-use an existing bucket"
   MyBucket:
-    Description: Amazon S3 Bucket to store backup data, either a new bucket to be created, and an existing bucket to be re-used. The name must be globally unique. Please see S3 Bucket naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+    Description: Please specify a name of the Amazon S3 bucket (irrespective if its new or existing). The name must be globally unique. Please see S3 Bucket naming rules https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
     Type: String
     MinLength: 3
     MaxLength: 63
@@ -83,7 +83,7 @@ Resources:
       Description: This Lambda function gets invoked each time a backup is copied to S3. It pushes a metric and dimension to CloudWatch for each backup
       Handler: metrics.lambda_handler
       Layers:
-      - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45
+      - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:45 #The Powertools Lambda layer will also be Arm-based
       Events:
         BackupEvent:
           Type: S3
@@ -91,9 +91,6 @@ Resources:
             Bucket:
               Ref: BackupBucket
             Events: s3:ObjectCreated:*
-      Policies:
-        - S3ReadPolicy:
-            BucketName: !Sub "${MyBucket}"
 
   AlarmsFunction:
     Type: AWS::Serverless::Function    
@@ -123,7 +120,7 @@ Resources:
 
   HelperS3NotifcationFunction:
     Type: AWS::Serverless::Function    
-    Condition: ReuseS3Bucket  #only create this functions if CreateBucket = reuse. 
+    Condition: ReuseS3Bucket  #only create this function if CreateBucket = reuse
     Properties:
       Description: This Lambda function will create an Event Notification for the existing bucket to the CustomMetricsFunction Lambda
       Handler: helper_s3notification.lambda_handler
@@ -138,10 +135,11 @@ Resources:
             Action: 
              - s3:PutBucketNotification
             Resource: 
-             - !Sub '*' #TODO: make this specific to the bucket
+             - !Sub 'arn:aws:s3:::${MyBucket}'  
 
   CreateS3Notifcation:
-    Type: Custom::CreateS3NotifcationFunction
+    Type: Custom::CreateS3NotifcationFunction #A CloudFormation custom resource, that runs on stack create, that runs the HelperS3NotifcationFunction
+    Condition: ReuseS3Bucket  #only create this function if CreateBucket = reuse
     Properties:
       ServiceToken: !GetAtt HelperS3NotifcationFunction.Arn
 

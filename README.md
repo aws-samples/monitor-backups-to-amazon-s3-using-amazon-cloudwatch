@@ -101,8 +101,8 @@ The first command will build the source of your application. The second command 
 
 - **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
 - **AWS Region**: The AWS region you want to deploy your app to.
-- Parameter **CreateBucket**: Should this SAM template create a new Amazon S3 bucket, or does your bucket already exist? Please use 'create' to create a new S3 bucket, or 'reuse' to re-use an existing bucket. The default is 'create'.
-- Parameter **MyBucket**: Please specify a name of the Amazon S3 bucket (irrespective if its new or existing). Must not be an existing bucket, and the name must be globally unique. Please note the [S3 bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html). 
+- Parameter **CreateBucket**: Should this SAM template create a new Amazon S3 bucket, or does your bucket already exist? Please specify 'create' to create a new S3 bucket, or 'reuse' to re-use an existing bucket. The default is 'create'.
+- Parameter **MyBucket**: Please specify a name of the Amazon S3 bucket (irrespective if its new or existing). The name must be globally unique. Please note the [S3 bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html). 
 - Parameter **MyEmailAddress**: Please specify an email address in order to receive email notifications of failed backups to Amazon S3.
 - Parameter **MetricName** [Backups]: The name of the CloudWatch metric that should be used. Can be any string. The default is "Backups".
 - Parameter **DimensionName** [System]: The name of the CloudWatch dimension that should be used for the above metric, based on what each S3 folder represents. E.g each folder can represent a System, Location, or Customer, that you doing backups for. Can be any string. The default is "System".
