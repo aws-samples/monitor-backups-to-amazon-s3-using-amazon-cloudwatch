@@ -38,8 +38,7 @@ def create_metric_alarm(dimension_value):
 
 def lambda_handler(event, context):
     logger.info("List available metrics and create CloudWatch alarms for each custom metric") 
-
-    #TODO: check which alarms already exist before creating.
+    
     #get the metrics that already exist
     list_metrics = client.list_metrics(
         Namespace=CloudWatchMetricsNameSpace,
@@ -51,7 +50,18 @@ def lambda_handler(event, context):
         for dimensions in metric['Dimensions']:
             if dimensions["Name"] == DimensionName:
                 dimension_value = (dimensions["Value"])
-                #for each metric, create an alarm
-                create_metric_alarm(dimension_value)
+                alarm = client.describe_alarms_for_metric(
+                    MetricName=MetricName,
+                    Namespace=CloudWatchMetricsNameSpace,
+                    Dimensions=[
+                        {
+                            'Name': DimensionName,
+                            'Value': dimension_value
+                        },
+                    ],
+                )
+                if not alarm["MetricAlarms"]: #if the alarm does not already exist, then for each metric, create an alarm
+                    logger.info("cant find ALARM for : " + dimension_value + " \n")
+                    create_metric_alarm(dimension_value)
 
         

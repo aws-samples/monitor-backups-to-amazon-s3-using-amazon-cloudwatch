@@ -68,6 +68,8 @@ Globals:
           DimensionName: !Ref DimensionName
           MyBucket: !Ref MyBucket
           BackupFrequencyPeriod: !Ref BackupFrequencyPeriod 
+    LoggingConfig:
+      LogGroup: !Sub /aws/lambda/${AWS::StackName}
 
 Resources:
   BackupBucket:
@@ -105,6 +107,7 @@ Resources:
             Action:
               - cloudwatch:PutMetricAlarm 
               - cloudwatch:ListMetrics
+              - cloudwatch:DescribeAlarmsForMetric
             Resource:
               - '*'
       Events:
