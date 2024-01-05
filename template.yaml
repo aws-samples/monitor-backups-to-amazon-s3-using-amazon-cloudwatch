@@ -54,7 +54,7 @@ Globals:
   Function:
     Timeout: 5
     MemorySize: 128
-    Runtime: python3.11
+    Runtime: python3.12
     CodeUri: monitor
     Architectures:
       - arm64 #Lambda functions will run on Arm-based AWS Graviton processors. The Powertools Lambda layer will also be Arm-based
@@ -70,6 +70,9 @@ Globals:
           BackupFrequencyPeriod: !Ref BackupFrequencyPeriod 
     LoggingConfig:
       LogGroup: !Sub /aws/lambda/${AWS::StackName}
+      LogFormat: JSON
+    Tags:
+      project: "monitor-backups-to-amazon-s3-using-amazon-cloudwatch"
 
 Resources:
   BackupBucket:
@@ -78,6 +81,9 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "${MyBucket}"
+      Tags:
+        - Key: project
+          Value: "monitor-backups-to-amazon-s3-using-amazon-cloudwatch"
     
   CustomMetricsFunction:
     Type: AWS::Serverless::Function    
@@ -152,6 +158,9 @@ Resources:
       Subscription:
         - Endpoint: !Sub "${MyEmailAddress}"
           Protocol: "email"
+      Tags:
+        - Key: project
+          Value: "monitor-backups-to-amazon-s3-using-amazon-cloudwatch"
 
   CloudWatchDashboard:
     Type: AWS::CloudWatch::Dashboard
